@@ -86,13 +86,9 @@ label x =
     case tryFind caches of
       Just l -> return l
       Nothing -> do
-        -- Rare case: label was not there.
-        x <- atomicModifyCaches $ \caches ->
-          case tryFind caches of
-            Just l -> (caches, l)
-            Nothing ->
-              insert caches
-        return x
+        atomicModifyCaches $ \caches -> case tryFind caches of
+          Just l -> (caches, l)
+          Nothing -> insert caches
 
   where
     ty = typeOf x
@@ -121,13 +117,12 @@ find :: Label a -> a
 -- the form
 --   find (label x)
 -- doesn't work.
-find (Label !(I32# n#)) = findWorker n#
+find (Label (I32# n#)) = findWorker (int32ToInt# n#)
 
 {-# NOINLINE findWorker #-}
 findWorker :: Int# -> a
 findWorker n# =
   unsafeDupablePerformIO $ do
-    let n = I32# n#
-    Caches{..} <- readIORef cachesRef
-    x <- return $! fromAny (DynamicArray.getWithDefault undefined (fromIntegral n) caches_to)
-    return x
+    let n = I32# (intToInt32# n#)
+    Caches {..} <- readIORef cachesRef
+    return $! fromAny (DynamicArray.getWithDefault undefined (fromIntegral n) caches_to)
