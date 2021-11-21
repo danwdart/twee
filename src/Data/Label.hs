@@ -1,7 +1,7 @@
 -- | Assignment of unique IDs to values.
 -- Inspired by the 'intern' package.
 
-{-# LANGUAGE RecordWildCards, ScopedTypeVariables, BangPatterns, MagicHash, RoleAnnotations #-}
+{-# LANGUAGE CPP, RecordWildCards, ScopedTypeVariables, BangPatterns, MagicHash, RoleAnnotations #-}
 module Data.Label(Label, unsafeMkLabel, labelNum, label, find) where
 
 import Data.IORef
@@ -117,12 +117,20 @@ find :: Label a -> a
 -- the form
 --   find (label x)
 -- doesn't work.
+#if MIN_VERSION_base(4,16,0)
 find (Label (I32# n#)) = findWorker (int32ToInt# n#)
+#else
+find (Label (I32# n#)) = findWorker n#
+#endif
 
 {-# NOINLINE findWorker #-}
 findWorker :: Int# -> a
 findWorker n# =
   unsafeDupablePerformIO $ do
+#if MIN_VERSION_base(4,16,0)
     let n = I32# (intToInt32# n#)
+#else
+    let n = I32# n#
+#endif      
     Caches {..} <- readIORef cachesRef
     return $! fromAny (DynamicArray.getWithDefault undefined (fromIntegral n) caches_to)
