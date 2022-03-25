@@ -66,11 +66,9 @@ minimiseAxioms axioms conjecture = loop [] axioms
       res <- runTwee good (axioms ++ axioms') conjecture
       if res then (do
         res <- runTwee bad (axioms ++ axioms') conjecture
-        case res of
-          False ->
-            loop axioms axioms'
-          True ->
-            loop (axiom:axioms) axioms') else
+        if res then
+          loop (axiom:axioms) axioms' else
+          loop axioms axioms') else
         loop (axiom:axioms) axioms'
 
 selectAxiom :: [String] -> [String] -> String -> IO String
@@ -81,11 +79,9 @@ selectAxiom axioms axioms' conjecture = loop axioms
       res <- runTwee good (axiom:axioms') conjecture
       if res then (do
         res <- runTwee bad (axiom:axioms') conjecture
-        case res of
-          False ->
-            return axiom
-          True ->
-            loop axioms) else
+        if res then
+          loop axioms else
+          return axiom) else
         loop axioms
 
 reduceAxioms :: [String] -> [String] -> String -> IO [String]

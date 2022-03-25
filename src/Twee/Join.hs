@@ -10,11 +10,11 @@ import qualified Data.Map.Strict  as Map
 import           Data.Maybe
 import           Data.Ord
 import           Twee.Base
-import           Twee.CP          hiding (Config)
 import           Twee.Constraints hiding (funs)
+import           Twee.CP          hiding (Config)
 import           Twee.Equation
-import           Twee.Index       (Index)
 import qualified Twee.Index       as Index
+import           Twee.Index       (Index)
 import qualified Twee.Proof       as Proof
 import           Twee.Rule
 import           Twee.Rule.Index  (RuleIndex (..))

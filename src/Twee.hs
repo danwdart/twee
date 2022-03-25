@@ -30,24 +30,24 @@ import           Data.Ord
 import           Data.PackedSequence              (PackedSequence)
 import qualified Data.PackedSequence              as PackedSequence
 import           Twee.Base
-import           Twee.CP                          hiding (Config)
-import qualified Twee.CP                          as CP
 import           Twee.Constraints
+import qualified Twee.CP                          as CP
+import           Twee.CP                          hiding (Config)
 import           Twee.Equation
-import           Twee.Index                       (Index)
 import qualified Twee.Index                       as Index
-import           Twee.Join                        hiding (Config, defaultConfig)
+import           Twee.Index                       (Index)
 import qualified Twee.Join                        as Join
+import           Twee.Join                        hiding (Config, defaultConfig)
 import           Twee.Profile
+import qualified Twee.Proof                       as Proof
 import           Twee.Proof                       (Axiom (..), Derivation,
                                                    Proof (..), ProvedGoal (..),
                                                    certify, derivation,
                                                    provedGoal)
-import qualified Twee.Proof                       as Proof
-import           Twee.Rule                        hiding (normalForms)
 import qualified Twee.Rule                        as Rule
-import           Twee.Rule.Index                  (RuleIndex (..))
+import           Twee.Rule                        hiding (normalForms)
 import qualified Twee.Rule.Index                  as RuleIndex
+import           Twee.Rule.Index                  (RuleIndex (..))
 import           Twee.Task
 import           Twee.Utils
 
@@ -636,8 +636,7 @@ resetGoal goal@Goal{..} =
   goal { goal_lhs = expansions goal_expanded_lhs,
          goal_rhs = expansions goal_expanded_rhs }
   where
-    expansions m =
-      Map.mapWithKey (\t _ -> (t, [])) m
+    expansions = Map.mapWithKey (\t _ -> (t, []))
 
 -- Rewrite goal terms backwards using rewrite rules.
 {-# INLINEABLE rewriteGoalsBackwards #-}

@@ -347,9 +347,9 @@ instance Minimal Constant where
   minimal = fun Minimal
 
 instance Ordered Constant where
-  lessEq t u = KBO.lessEq t u
-  lessIn model t u = KBO.lessIn model t u
-  lessEqSkolem t u = KBO.lessEqSkolem t u
+  lessEq = KBO.lessEq
+  lessIn = KBO.lessIn
+  lessEqSkolem = KBO.lessEqSkolem
 
 instance EqualsBonus Constant where
   hasEqualsBonus Minimal = False
@@ -696,7 +696,7 @@ runTwee globals (TSTPFlags tstp) horn precedence config flags@MainFlags{..} late
       Just (file, mod) -> do
         h <- openFile file WriteMode
         hSetBuffering h LineBuffering
-        let put msg = hPutStrLn h msg
+        let put = hPutStrLn h
         put $ ":- module(" ++ mod ++ ", [step/1, lemma/1, axiom/1, goal/1])."
         put ":- discontiguous(step/1)."
         put ":- discontiguous(lemma/1)."
@@ -706,49 +706,48 @@ runTwee globals (TSTPFlags tstp) horn precedence config flags@MainFlags{..} late
         return $ \msg -> hPutStrLn h msg
 
   let
+  traceApp f = pPrintTerm uncurried prettyNormal 0 (text f)
     say msg = unless (quiet globals) (putStrLn msg)
-    line = say ""
-    output = Output {
-      output_message = \msg -> do
-        say (prettyShow msg)
-        sayTrace (show (traceMsg msg)) }
+  line = say ""
+  output = Output {
+    output_message = \msg -> do
+      say (prettyShow msg)
+      sayTrace (show (traceMsg msg)) }
 
-    traceMsg (NewActive active) =
-      step "add" [traceActive active]
-    traceMsg (NewEquation eqn) =
-      step "hard" [traceEqn eqn]
-    traceMsg (DeleteActive active) =
-      step "delete" [traceActive active]
-    traceMsg SimplifyQueue =
-      step "simplify_queue" []
-    traceMsg Interreduce =
-      step "interreduce" []
-    traceMsg (Status n) =
-      step "status" [pPrint n]
+  traceMsg (NewActive active) =
+    step "add" [traceActive active]
+  traceMsg (NewEquation eqn) =
+    step "hard" [traceEqn eqn]
+  traceMsg (DeleteActive active) =
+    step "delete" [traceActive active]
+  traceMsg SimplifyQueue =
+    step "simplify_queue" []
+  traceMsg Interreduce =
+    step "interreduce" []
+  traceMsg (Status n) =
+    step "status" [pPrint n]
 
-    traceActive Active{active_top = Nothing, ..} =
-      traceApp "rule" [pPrint active_id, traceEqn (unorient active_rule)]
-    traceActive Active{active_top = Just top, ..} =
-      traceApp "rule" [pPrint active_id, traceEqn (unorient active_rule), traceEqn lemma1, traceEqn lemma2]
-      where
-        (lemma1, lemma2) =
-          find (steps (derivation active_proof))
-        find (s1:s2:_)
-          | eqn_rhs (equation (certify s1)) == top && eqn_lhs (equation (certify s2)) == top =
-            (lemmaOf s1, lemmaOf s2)
-        find (_:xs) = find xs
-        lemmaOf s =
-          case (usedLemmas s, usedAxioms s) of
-            ([p], [])  -> equation p
-            ([], [ax]) -> axiom_eqn ax
+  traceActive Active{active_top = Nothing, ..} =
+    traceApp "rule" [pPrint active_id, traceEqn (unorient active_rule)]
+  traceActive Active{active_top = Just top, ..} =
+    traceApp "rule" [pPrint active_id, traceEqn (unorient active_rule), traceEqn lemma1, traceEqn lemma2]
+    where
+      (lemma1, lemma2) =
+        find (steps (derivation active_proof))
+      find (s1:s2:_)
+        | eqn_rhs (equation (certify s1)) == top && eqn_lhs (equation (certify s2)) == top =
+          (lemmaOf s1, lemmaOf s2)
+      find (_:xs) = find xs
+      lemmaOf s =
+        case (usedLemmas s, usedAxioms s) of
+          ([p], [])  -> equation p
+          ([], [ax]) -> axiom_eqn ax
 
-    traceEqn (t :=: u) =
-      pPrintPrec prettyNormal 6 t <+> text "=" <+> pPrintPrec prettyNormal 6 u
-    traceApp f xs =
-      pPrintTerm uncurried prettyNormal 0 (text f) xs
+  traceEqn (t :=: u) =
+    pPrintPrec prettyNormal 6 t <+> text "=" <+> pPrintPrec prettyNormal 6 u
 
-    step :: String -> [Doc] -> Doc
-    step f xs = traceApp "step" [traceApp f xs] <#> text "."
+  step :: String -> [Doc] -> Doc
+  step f xs = traceApp "step" [traceApp f xs] <#> text "."
 
   say "Here is the input problem:"
   forM_ axioms $ \Axiom{..} ->

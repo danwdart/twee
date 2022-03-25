@@ -107,15 +107,15 @@ instance (ConstantOf a ~ ConstantOf b,
   subst_ sub (x, y, z) = (subst_ sub x, subst_ sub y, subst_ sub z)
 
 instance Symbolic a => Symbolic [a] where
+subst_ sub = map (subst_ sub)
   type ConstantOf [a] = ConstantOf a
-  termsDL xs = msum (map termsDL xs)
-  subst_ sub xs = map (subst_ sub) xs
+termsDL xs = msum (map termsDL xs)
 
 instance Symbolic a => Symbolic (Maybe a) where
+subst_ sub = fmap (subst_ sub)
   type ConstantOf (Maybe a) = ConstantOf a
-  termsDL Nothing  = mzero
-  termsDL (Just x) = termsDL x
-  subst_ sub x = fmap (subst_ sub) x
+termsDL Nothing  = mzero
+termsDL (Just x) = termsDL x
 
 -- | An instance @'Has' a b@ indicates that a value of type @a@ contains a value
 -- of type @b@ which is somehow part of the meaning of the @a@.

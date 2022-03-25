@@ -692,18 +692,18 @@ replacePosition n !x = aux n
 {-# INLINE replacePositionSub #-}
 replacePositionSub :: (Substitution sub, SubstFun sub ~ f) => sub -> Int -> TermList f -> TermList f -> Builder f
 replacePositionSub sub n !x = aux n
-  where
+  where -- implies n >= len t
+
+outside = substList sub
     aux !_ !_ | never = undefined
-    aux _ Empty = mempty
-    aux n (Cons t u)
-      | n < len t = inside n t `mappend` outside u
-      | otherwise = outside (singleton t) `mappend` aux (n-len t) u
+aux _ Empty = mempty
+aux n (Cons t u)
+  | n < len t = inside n t `mappend` outside u
+  | otherwise = outside (singleton t) `mappend` aux (n-len t) u
 
-    inside 0 _          = outside x
-    inside n (App f ts) = app f (aux (n-1) ts)
-    inside _ _          = undefined -- implies n >= len t
-
-    outside t = substList sub t
+inside 0 _          = outside x
+inside n (App f ts) = app f (aux (n-1) ts)
+inside _ _          = undefined
 
 -- | Convert a position in a term, expressed as a single number, into a path.
 positionToPath :: Term f -> Int -> [Int]

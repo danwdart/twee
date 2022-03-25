@@ -22,8 +22,8 @@ import           Test.QuickCheck     hiding (Fun, Function)
 import           Test.QuickCheck.All
 import           Text.PrettyPrint
 import           Twee.Base           hiding (F)
-import           Twee.CP
 import           Twee.Constraints
+import           Twee.CP
 import           Twee.Equation
 import qualified Twee.Index          as Index
 import qualified Twee.KBO            as Ord
@@ -60,8 +60,8 @@ instance (Labelled f, Ord f, Typeable f, Arbitrary f, Arity f) => Arbitrary (Ter
   arbitrary =
     sized $ \n ->
       oneof $
-        (build <$> var <$> arbitrary) :
-        [ do { f <- arbitrary; build <$> app f <$> vectorOf (arity f) (resize ((n-1) `div` arity f) arbitrary :: Gen (Term f)) } | n > 0 ]
+        (build . var <$> arbitrary) :
+        [ do { f <- arbitrary; build . app f <$> vectorOf (arity f) (resize ((n-1) `div` arity f) arbitrary :: Gen (Term f)) } | n > 0 ]
   shrink (App f ts0) =
     ts ++ (build . app f <$> shrinkOne ts)
     where

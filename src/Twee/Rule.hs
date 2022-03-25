@@ -19,10 +19,10 @@ import           Data.Tuple
 import           Twee.Base
 import           Twee.Constraints                 hiding (funs)
 import           Twee.Equation
-import           Twee.Index                       (Index)
 import qualified Twee.Index                       as Index
-import           Twee.Proof                       (Derivation, Proof)
+import           Twee.Index                       (Index)
 import qualified Twee.Proof                       as Proof
+import           Twee.Proof                       (Derivation, Proof)
 import qualified Twee.Term                        as Term
 import           Twee.Utils
 

@@ -5,8 +5,8 @@ import           Data.List
 import qualified Data.Map.Strict as Map
 import           SAT
 import           SAT.Optimize
-import           SAT.Unary       hiding (modelValue)
 import qualified SAT.Unary       as Unary
+import           SAT.Unary       hiding (modelValue)
 
 usort :: Ord a => [a] -> [a]
 usort = map head . group . sort

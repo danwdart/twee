@@ -20,8 +20,8 @@ import qualified Data.Set        as Set
 import           Twee.Base
 import           Twee.Equation
 import           Twee.Index      (Index)
-import           Twee.Proof      (Derivation, congPath)
 import qualified Twee.Proof      as Proof
+import           Twee.Proof      (Derivation, congPath)
 import           Twee.Rule
 import qualified Twee.Term       as Term
 import           Twee.Utils

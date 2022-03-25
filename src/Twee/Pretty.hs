@@ -8,8 +8,8 @@ import qualified Data.Map                       as Map
 import           Data.Ratio
 import           Data.Set                       (Set)
 import qualified Data.Set                       as Set
-import           Text.PrettyPrint.HughesPJClass hiding (empty, (<>))
 import qualified Text.PrettyPrint.HughesPJClass as PP
+import           Text.PrettyPrint.HughesPJClass hiding (empty, (<>))
 import           Twee.Term
 
 -- * Miscellaneous 'Pretty' instances and utilities.

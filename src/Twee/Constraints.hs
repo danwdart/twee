@@ -13,8 +13,8 @@ import qualified Data.Map.Strict as Map
 import           Data.Maybe
 import           Data.Ord
 import           Twee.Pretty     hiding (equals)
-import           Twee.Term       hiding (lookup)
 import qualified Twee.Term       as Flat
+import           Twee.Term       hiding (lookup)
 import           Twee.Utils
 
 data Atom f = Constant (Fun f) | Variable Var deriving (Show, Eq, Ord)

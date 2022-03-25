@@ -3,8 +3,8 @@ import           Criterion.Main
 import           Data.Int
 import           Data.Maybe
 import           Test.QuickCheck hiding (Fun)
-import           Twee.Term       hiding (F, isFun)
 import qualified Twee.Term
+import           Twee.Term       hiding (F, isFun)
 import           Twee.Term.Core  hiding (subst)
 
 instance Num (Fun Int) where fromInteger n = F (fromInteger n)

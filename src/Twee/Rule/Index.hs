@@ -9,8 +9,8 @@ module Twee.Rule.Index(
 
 import           Prelude    hiding (lookup)
 import           Twee.Base  hiding (empty, lookup)
-import           Twee.Index hiding (delete, empty, insert)
 import qualified Twee.Index as Index
+import           Twee.Index hiding (delete, empty, insert)
 import           Twee.Rule
 
 data RuleIndex f a =

@@ -4,8 +4,8 @@
 module Twee.Term.Nested where
 
 import           Control.Monad
-import           Twee.Term     (Fun (..), Subst, Var (..))
 import qualified Twee.Term     as Flat
+import           Twee.Term     (Fun (..), Subst, Var (..))
 
 data Term f =
     NVar {-# UNPACK #-} !Var

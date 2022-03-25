@@ -9,8 +9,8 @@ import           Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import           Prelude         hiding (lookup)
 import           Twee.Base       hiding (empty, lookup)
-import           Twee.Index      hiding (delete, empty, insert)
 import qualified Twee.Index      as Index
+import           Twee.Index      hiding (delete, empty, insert)
 import           Twee.Rule
 
 data MultiIndex idx f a =
