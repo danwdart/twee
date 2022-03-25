@@ -1,60 +1,64 @@
-{-# LANGUAGE CPP, RecordWildCards, FlexibleInstances, PatternGuards, DeriveAnyClass #-}
+{-# LANGUAGE CPP               #-}
+{-# LANGUAGE DeriveAnyClass    #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE RecordWildCards   #-}
 {-# OPTIONS_GHC -flate-specialise #-}
 module SequentialMain(main) where
 
-import Control.Monad
-import Data.Char
-import Data.Either
-import Twee hiding (message)
-import Twee.Base hiding (char, lookup, vars, ground)
-import Twee.Rule(lhs, rhs, unorient)
-import Twee.Equation
-import qualified Twee.Proof as Proof
-import Twee.Proof hiding (Config, defaultConfig)
-import qualified Twee.Join as Join
-import Twee.Utils
-import qualified Twee.CP as CP
-import Data.Ord
-import qualified Data.Map.Strict as Map
-import qualified Twee.KBO as KBO
-import Data.List.Split
-import Data.List
-import Data.Maybe
-import Jukebox.Options
-import Jukebox.Toolbox
-import Jukebox.Name hiding (lhs, rhs, label)
-import qualified Jukebox.Form as Jukebox
-import Jukebox.Form hiding ((:=:), Var, Symbolic(..), Term, Axiom, size, Subst, subst)
-import Jukebox.Tools.EncodeTypes
-import Jukebox.TPTP.Print
-import Jukebox.Tools.HornToUnit
-import qualified Data.IntMap.Strict as IntMap
-import System.IO
-import System.Exit
-import qualified Data.Set as Set
-import qualified Data.Label as Label
-import System.Console.ANSI
-import Data.Symbol
-import Twee.Profile
+import           Control.Monad
+import           Data.Char
+import           Data.Either
+import qualified Data.IntMap.Strict        as IntMap
+import qualified Data.Label                as Label
+import           Data.List
+import           Data.List.Split
+import qualified Data.Map.Strict           as Map
+import           Data.Maybe
+import           Data.Ord
+import qualified Data.Set                  as Set
+import           Data.Symbol
+import           Jukebox.Form              hiding (Axiom, Subst, Symbolic (..),
+                                            Term, Var, size, subst, (:=:))
+import qualified Jukebox.Form              as Jukebox
+import           Jukebox.Name              hiding (label, lhs, rhs)
+import           Jukebox.Options
+import           Jukebox.TPTP.Print
+import           Jukebox.Toolbox
+import           Jukebox.Tools.EncodeTypes
+import           Jukebox.Tools.HornToUnit
+import           System.Console.ANSI
+import           System.Exit
+import           System.IO
+import           Twee                      hiding (message)
+import           Twee.Base                 hiding (char, ground, lookup, vars)
+import qualified Twee.CP                   as CP
+import           Twee.Equation
+import qualified Twee.Join                 as Join
+import qualified Twee.KBO                  as KBO
+import           Twee.Profile
+import           Twee.Proof                hiding (Config, defaultConfig)
+import qualified Twee.Proof                as Proof
+import           Twee.Rule                 (lhs, rhs, unorient)
+import           Twee.Utils
 
 data MainFlags =
   MainFlags {
-    flags_proof :: Bool,
-    flags_trace :: Maybe (String, String),
-    flags_formal_proof :: Bool,
-    flags_explain_encoding :: Bool,
-    flags_flip_ordering :: Bool,
-    flags_give_up_on_saturation :: Bool,
-    flags_flatten_goals :: Bool,
-    flags_flatten_nonground :: Bool,
-    flags_flatten_goals_lightly :: Bool,
-    flags_flatten_all :: Bool,
-    flags_eliminate :: [String],
-    flags_backwards_goal :: Int,
-    flags_flatten_backwards_goal :: Int,
-    flags_equals_transformation :: Bool,
+    flags_proof                    :: Bool,
+    flags_trace                    :: Maybe (String, String),
+    flags_formal_proof             :: Bool,
+    flags_explain_encoding         :: Bool,
+    flags_flip_ordering            :: Bool,
+    flags_give_up_on_saturation    :: Bool,
+    flags_flatten_goals            :: Bool,
+    flags_flatten_nonground        :: Bool,
+    flags_flatten_goals_lightly    :: Bool,
+    flags_flatten_all              :: Bool,
+    flags_eliminate                :: [String],
+    flags_backwards_goal           :: Int,
+    flags_flatten_backwards_goal   :: Int,
+    flags_equals_transformation    :: Bool,
     flags_distributivity_heuristic :: Bool,
-    flags_kbo_weight0 :: Bool }
+    flags_kbo_weight0              :: Bool }
 
 parseMainFlags :: OptionParser MainFlags
 parseMainFlags =
@@ -69,7 +73,7 @@ parseMainFlags =
       inGroup "Output options" $
       flag "trace"
         ["Write a Prolog-format execution trace to this file (off by default)."]
-        Nothing ((\x y -> Just (x, y)) <$> argFile <*> argModule)
+        Nothing (curry Just <$> argFile <*> argModule)
     formal =
       expert $
       inGroup "Output options" $
@@ -143,7 +147,7 @@ parseConfig =
   where
     maxSize =
       inGroup "Resource limits" $
-      flag "max-term-size" ["Discard rewrite rules whose left-hand side is bigger than this limit (unlimited by default)."] Nothing (Just <$> checkSize <$> argNum)
+      flag "max-term-size" ["Discard rewrite rules whose left-hand side is bigger than this limit (unlimited by default)."] Nothing (Just . checkSize <$> argNum)
     checkSize n t = KBO.size t <= n
     maxCPs =
       inGroup "Resource limits" $
@@ -262,14 +266,14 @@ parseConfig =
         ["Show which instance of a lemma or axiom each rewrite step uses (off by default)."]
         False
     show_axiom_uses =
-      inGroup "Proof presentation" $
-      interpret <$>
+      inGroup "Proof presentation" (
+      interpret .
       concat <$>
       manyFlags "show-uses-of"
         ["Show which instances of the given axioms were needed (none by default).",
          "Separate multiple axiom names with commas.",
          "Use --show-uses-of all to show uses of all axioms."]
-        (splitOn "," <$> arg "<axioms>" "expected a list of axiom names" Just)
+        (splitOn "," <$> arg "<axioms>" "expected a list of axiom names" Just))
       where
         interpret xss ax = axiom_name ax `elem` xss || "all" `elem` xss
     colour = fromMaybe <$> io colourSupported <*> colourFlag
@@ -314,10 +318,10 @@ data Precedence = Precedence !Bool !Bool !(Maybe Int) !Int
   deriving (Eq, Ord)
 
 instance KBO.Sized Constant where
-  size Minimal = 1
+  size Minimal      = 1
   size Constant{..} = con_size
 instance KBO.Weighted Constant where
-  argWeight Minimal = 1
+  argWeight Minimal      = 1
   argWeight Constant{..} = con_weight
 
 instance Pretty Constant where
@@ -349,13 +353,13 @@ instance Ordered Constant where
 
 instance EqualsBonus Constant where
   hasEqualsBonus Minimal = False
-  hasEqualsBonus c = con_bonus c
+  hasEqualsBonus c       = con_bonus c
   isEquals Minimal = False
-  isEquals c = SequentialMain.isEquals (con_id c)
+  isEquals c       = SequentialMain.isEquals (con_id c)
   isTrue Minimal = False
-  isTrue c = SequentialMain.isTrue (con_id c)
+  isTrue c       = SequentialMain.isTrue (con_id c)
   isFalse Minimal = False
-  isFalse c = SequentialMain.isFalse (con_id c)
+  isFalse c       = SequentialMain.isFalse (con_id c)
 
 data TweeContext =
   TweeContext {
@@ -404,7 +408,7 @@ isFalse fun =
   hasLabel "false" (name fun) && Jukebox.arity fun == 0
 
 jukeboxFunction :: TweeContext -> Constant -> Jukebox.Function
-jukeboxFunction _ Constant{..} = con_id
+jukeboxFunction _ Constant{..}          = con_id
 jukeboxFunction TweeContext{..} Minimal = ctx_minimal
 
 tweeTerm :: MainFlags -> HornFlags -> TweeContext -> (Jukebox.Function -> Precedence) -> Jukebox.Term -> Term Constant
@@ -468,7 +472,7 @@ flattenGoals backwardsGoal flattenNonGround flattenAll full prob =
     term _ = []
 
     isVar (Jukebox.Var _) = True
-    isVar _ = False
+    isVar _               = False
 
     define (f :@: ts) = do
       name <- newName f
@@ -515,7 +519,7 @@ addDistributivityHeuristic prob =
       | f1 == f2 && f2 == f3 && g1 == g2 &&
         x1 == x2 && x2 == x3 && y1 == y2 && z1 == z2 =
         Just (f1, g1, Jukebox.typ x1)
-      
+
     checkDistributivity
       (f1 :@: [g1 :@: [Jukebox.Var x1, Jukebox.Var y1], Jukebox.Var z1])
       (g2 :@: [f2 :@: [Jukebox.Var x2, Jukebox.Var z2],
@@ -553,7 +557,7 @@ addNarrowing alwaysNarrow TweeContext{..} prob =
         let
           equalityLiterals =
             -- true != false
-            ("true_equals_false", Neg ((ctx_true :@:) [] Jukebox.:=: (ctx_false :@: []))):
+            ("true_equals_false", Neg (ctx_true :@: [] Jukebox.:=: (ctx_false :@: []))):
             -- eq(X,X)=true
             ("reflexivity", Pos (ctx_equals :@: [Jukebox.Var ctx_var, Jukebox.Var ctx_var] Jukebox.:=: (ctx_true :@: []))):
             -- [eq(a,b)=false, eq(c,d)=false, ...]
@@ -679,7 +683,7 @@ runTwee globals (TSTPFlags tstp) horn precedence config flags@MainFlags{..} late
       | (axiom, PreEquation{..}) <- zip axioms axioms0,
         isDefinition pre_form ]
     isDefinition Input{source = Unknown} = True
-    isDefinition inp = tag inp `elem` flags_eliminate
+    isDefinition inp                     = tag inp `elem` flags_eliminate
 
     withGoals = foldl' (addGoal config) (initialState config) goals
     withAxioms = foldl' (addAxiom config) withGoals axioms
@@ -700,7 +704,7 @@ runTwee globals (TSTPFlags tstp) horn precedence config flags@MainFlags{..} late
         put ":- discontiguous(goal/1)."
         put ":- style_check(-singleton)."
         return $ \msg -> hPutStrLn h msg
-  
+
   let
     say msg = unless (quiet globals) (putStrLn msg)
     line = say ""
@@ -735,7 +739,7 @@ runTwee globals (TSTPFlags tstp) horn precedence config flags@MainFlags{..} late
         find (_:xs) = find xs
         lemmaOf s =
           case (usedLemmas s, usedAxioms s) of
-            ([p], []) -> equation p
+            ([p], [])  -> equation p
             ([], [ax]) -> axiom_eqn ax
 
     traceEqn (t :=: u) =
@@ -790,10 +794,7 @@ runTwee globals (TSTPFlags tstp) horn precedence config flags@MainFlags{..} late
           Map.fromList
             (zip (map goal_number goals) (map pre_form goals0))
 
-        findSource forms n =
-          case Map.lookup n forms of
-            Nothing -> []
-            Just inp -> go inp
+        findSource forms n = maybe [] go (Map.lookup n forms)
            where
             go Input{source = Unknown} = []
             go Input{source = Inference _ _ inps} = concatMap (go . inputValue) inps
@@ -801,10 +802,11 @@ runTwee globals (TSTPFlags tstp) horn precedence config flags@MainFlags{..} late
 
       when flags_explain_encoding $ do
         putStrLn "Take the following subset of the input axioms:"
-        mapM_ putStrLn $ map ("  " ++) $ lines $ showProblem $
-          usortBy (comparing show) $
-            (pres_axioms pres >>= findSource axiomForms . axiom_number) ++
-            (pres_goals pres >>= findSource goalForms . pg_number)
+        mapM_ (putStrLn . ("  " ++)) (
+          lines $ showProblem $ usortBy (comparing show) $
+            (pres_axioms pres >>= findSource axiomForms . axiom_number)
+              ++ (pres_goals pres >>= findSource goalForms . pg_number)
+            )
 
         putStrLn ""
         putStrLn "Now clausify the problem and encode Horn clauses using encoding 3 of"
@@ -822,7 +824,7 @@ runTwee globals (TSTPFlags tstp) horn precedence config flags@MainFlags{..} late
       print $ pPrintPresentation (cfg_proof_presentation config) pres
       putStrLn "% SZS output end Proof"
       putStrLn ""
-  
+
     when (tstp && flags_formal_proof) $ do
       putStrLn "% SZS output start CNFRefutation"
       print $ pPrintProof $
@@ -846,7 +848,7 @@ runTwee globals (TSTPFlags tstp) horn precedence config flags@MainFlags{..} late
         (KBO.size (lhs rule), lhs rule,
          KBO.size (rhs rule), rhs rule)
       actives =
-        sortBy (comparing (score . active_rule)) $
+        sortOn (score . active_rule) $
         IntMap.elems (st_active_set state')
 
     when (tstp && configIsComplete config) $ do
@@ -943,7 +945,7 @@ presentToJukebox ctx toEquation axioms goals Presentation{..} =
     -- same decoding at the Jukebox level.
     existentialHack eqn input =
       case find input of
-        [] -> error $ "bug in TSTP output: can't fix up decoded existential"
+        []      -> error "bug in TSTP output: can't fix up decoded existential"
         (inp:_) -> inp
         where
           -- Check if this looks like the correct clause;
@@ -997,7 +999,7 @@ main = do
           let
             isUnitEquality [Pos (_ Jukebox.:=: _)] = True
             isUnitEquality [Neg (_ Jukebox.:=: _)] = True
-            isUnitEquality _ = False
-            isUnit = all isUnitEquality (map (toLiterals . what) prob0)
+            isUnitEquality _                       = False
+            isUnit = all (isUnitEquality . toLiterals . what) prob0
             main' = if isUnit then main{flags_explain_encoding = False} else main{flags_formal_proof = False}
           encode prob >>= prove config main' later

@@ -1,29 +1,38 @@
-{-# LANGUAGE TemplateHaskell, FlexibleInstances, FlexibleContexts, UndecidableInstances, StandaloneDeriving, ScopedTypeVariables, TupleSections, DeriveGeneric, DerivingVia, DeriveAnyClass #-}
+{-# LANGUAGE DeriveAnyClass       #-}
+{-# LANGUAGE DeriveGeneric        #-}
+{-# LANGUAGE DerivingVia          #-}
+{-# LANGUAGE FlexibleContexts     #-}
+{-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE ScopedTypeVariables  #-}
+{-# LANGUAGE StandaloneDeriving   #-}
+{-# LANGUAGE TemplateHaskell      #-}
+{-# LANGUAGE TupleSections        #-}
+{-# LANGUAGE UndecidableInstances #-}
 module Test where
 
-import Twee.Constraints
-import Twee.Term hiding (subst, canonicalise, F)
-import Twee.Term.Core hiding (F)
-import Test.QuickCheck hiding (Function, Fun)
-import Test.QuickCheck.All
-import Twee.Pretty
-import Twee.CP
-import Twee.Proof
-import qualified Twee.KBO as Ord
-import Text.PrettyPrint
-import Twee.Base hiding (F)
-import Twee.Rule
-import Twee.Equation
-import Control.Monad
-import qualified Data.Map as Map
-import Data.Maybe
-import Data.Ord
-import Data.List
-import Data.Typeable
-import qualified Twee.Index as Index
-import Data.Int
-import GHC.Generics
-import Twee.Utils
+import           Control.Monad
+import           Data.Int
+import           Data.List
+import qualified Data.Map            as Map
+import           Data.Maybe
+import           Data.Ord
+import           Data.Typeable
+import           GHC.Generics
+import           Test.QuickCheck     hiding (Fun, Function)
+import           Test.QuickCheck.All
+import           Text.PrettyPrint
+import           Twee.Base           hiding (F)
+import           Twee.CP
+import           Twee.Constraints
+import           Twee.Equation
+import qualified Twee.Index          as Index
+import qualified Twee.KBO            as Ord
+import           Twee.Pretty
+import           Twee.Proof
+import           Twee.Rule
+import           Twee.Term           hiding (F, canonicalise, subst)
+import           Twee.Term.Core      hiding (F)
+import           Twee.Utils
 
 data Func = F Int Integer deriving (Eq, Ord, Show)
   deriving Labelled via (AutoLabel Func)
@@ -31,7 +40,7 @@ data Func = F Int Integer deriving (Eq, Ord, Show)
 instance Pretty Func where pPrint (F f _) = text "f" <#> int f
 instance PrettyTerm Func
 instance Arbitrary (Subst Func) where
-  arbitrary = fmap fromJust (fmap listToSubst (liftM2 zip (fmap nub arbitrary) (infiniteListOf arbitrary)))
+  arbitrary = fmap (fromJust . listToSubst) (liftM2 zip (fmap nub arbitrary) (infiniteListOf arbitrary))
 instance Arbitrary Func where
   arbitrary = F <$> choose (1, 1) <*> choose (1, 3)
 instance Minimal Func where
@@ -51,10 +60,10 @@ instance (Labelled f, Ord f, Typeable f, Arbitrary f, Arity f) => Arbitrary (Ter
   arbitrary =
     sized $ \n ->
       oneof $
-        [ build <$> var <$> arbitrary ] ++
+        (build <$> var <$> arbitrary) :
         [ do { f <- arbitrary; build <$> app f <$> vectorOf (arity f) (resize ((n-1) `div` arity f) arbitrary :: Gen (Term f)) } | n > 0 ]
   shrink (App f ts0) =
-    ts ++ (build <$> app f <$> shrinkOne ts)
+    ts ++ (build . app f <$> shrinkOne ts)
     where
       ts = unpack ts0
       shrinkOne [] = []
@@ -114,7 +123,7 @@ prop_3 (Pair t u) =
 
 prop_4 :: Pair Func -> Property
 prop_4 (Pair t u) =
-  t /= u ==> 
+  t /= u ==>
   not (lessEq t u && lessEq u t)
 
 prop_5 :: Term Func -> Property
@@ -150,16 +159,16 @@ data IndexOp f = Add (Term f) | Delete (Term f) deriving Show
 
 instance (Labelled f, Ord f, Typeable f, Arbitrary f, Arity f) => Arbitrary (IndexOps f) where
   arbitrary =
-    sized $ \n -> IndexOps <$> take n <$> arbOps []
+    sized $ \n -> IndexOps . take n <$> arbOps []
     where
       arbOps ts =
         frequency $
-          [(2, do { t <- arbitrary; ops <- arbOps (t:ts); return (Add t:ops) })] ++
+          (2, do { t <- arbitrary; ops <- arbOps (t:ts); return (Add t:ops) }) :
           [(1, do { t <- elements ts; ops <- arbOps (delete t ts); return (Delete t:ops) }) | not (null ts)]
   shrink (IndexOps ops) =
     IndexOps <$> shrinkList shr ops
     where
-      shr (Add t) = Add <$> shrink t
+      shr (Add t)    = Add <$> shrink t
       shr (Delete t) = Delete <$> shrink t
 
 
@@ -168,8 +177,8 @@ prop_index_invariant (IndexOps ops) =
   flip (foldr (counterexample . show)) idxs $
   property $ Index.invariant (last idxs)
   where
-    idxs = scanl (\idx op -> applyIndex op idx) Index.empty ops
-    applyIndex (Add t) = Index.insert t t
+    idxs = scanl (flip applyIndex) Index.empty ops
+    applyIndex (Add t)    = Index.insert t t
     applyIndex (Delete t) = Index.delete t t
 
 deriving instance Eq Symbol

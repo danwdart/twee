@@ -7,12 +7,12 @@ module Data.Numbered(
   empty, fromList, singleton, toList, size, (!),
   lookup, put, modify, filter, delete) where
 
-import Prelude hiding (filter, lookup)
-import qualified Data.List as List
-import Data.Primitive.ByteArray
-import Data.Primitive.SmallArray
-import Data.Int
-import Data.Maybe
+import           Data.Int
+import qualified Data.List                 as List
+import           Data.Maybe
+import           Data.Primitive.ByteArray
+import           Data.Primitive.SmallArray
+import           Prelude                   hiding (filter, lookup)
 
 -- | An array of key-value pairs.
 data Numbered a =

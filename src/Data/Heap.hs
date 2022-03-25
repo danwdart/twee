@@ -1,6 +1,7 @@
 -- | Skew heaps.
 
-{-# LANGUAGE BangPatterns, ScopedTypeVariables #-}
+{-# LANGUAGE BangPatterns        #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 module Data.Heap(
   Heap, empty, singleton, insert, removeMin, union, mapMaybe, size, toList) where
 
@@ -39,19 +40,19 @@ empty = Nil
 -- | Insert an element.
 {-# INLINEABLE insert #-}
 insert :: Ord a => a -> Heap a -> Heap a
-insert x h = union (singleton x) h
+insert = union . singleton
 
 -- | Find and remove the minimum element.
 {-# INLINEABLE removeMin #-}
 removeMin :: Ord a => Heap a -> Maybe (a, Heap a)
-removeMin Nil = Nothing
-removeMin (Node _ x l r) = Just (x, union l r)
+removeMin Nil            = Nothing
+removeMin (Node _ x l r) = Just (x, l `union` r)
 
 -- | Get the elements of a heap as a list, in unspecified order.
 toList :: Heap a -> [a]
 toList h = tl h []
   where
-    tl Nil = id
+    tl Nil            = id
     tl (Node _ x l r) = (x:) . tl l . tl r
 
 -- | Map a function over a heap, removing all values which
@@ -59,14 +60,14 @@ toList h = tl h []
 -- being mapped is mostly monotonic.
 {-# INLINEABLE mapMaybe #-}
 mapMaybe :: forall a b. Ord b => (a -> Maybe b) -> Heap a -> Heap b
-mapMaybe f h = mm h
+mapMaybe f = mm
   where
     mm :: Heap a -> Heap b
     mm Nil = Nil
     mm (Node _ x l r) =
       case f x of
         -- If the value maps to Nothing, get rid of it.
-        Nothing -> union l' r'
+        Nothing -> l' `union` r'
         -- If y is still the smallest in its subheap,
         -- the calls to insert and union here will work without making
         -- any recursive subcalls!
@@ -78,14 +79,14 @@ mapMaybe f h = mm h
 -- | Return the number of elements in the heap.
 {-# INLINE size #-}
 size :: Heap a -> Int
-size Nil = 0
+size Nil            = 0
 size (Node n _ _ _) = n
 
 -- Testing code:
 -- import Test.QuickCheck
 -- import qualified Data.List as List
 -- import qualified Data.Maybe as Maybe
--- 
+--
 -- instance (Arbitrary a, Ord a) => Arbitrary (Heap a) where
 --   arbitrary = sized arb
 --     where
@@ -96,23 +97,23 @@ size (Node n _ _ _) = n
 --            (n-1, union <$> arb' <*> arb')]
 --         where
 --           arb' = arb (n `div` 2)
--- 
+--
 -- toSortedList :: Ord a => Heap a -> [a]
 -- toSortedList = List.unfoldr removeMin
--- 
+--
 -- invariant :: Ord a => Heap a -> Bool
 -- invariant h = ord h && sizeOK h
 --   where
 --     ord Nil = True
 --     ord (Node _ x l r) = ord1 x l && ord1 x r
--- 
+--
 --     ord1 _ Nil = True
 --     ord1 x h@(Node _ y _ _) = x <= y && ord h
--- 
+--
 --     sizeOK Nil = size Nil == 0
 --     sizeOK (Node s _ l r) =
 --       s == size l + size r + 1
--- 
+--
 -- prop_1 h = withMaxSuccess 100000 $ invariant h
 -- prop_2 x h = withMaxSuccess 100000 $ invariant (insert x h)
 -- prop_3 h =
@@ -135,6 +136,6 @@ size (Node n _ _ _) = n
 --   invariant (mapMaybe f h)
 -- prop_10 (Blind f) h = withMaxSuccess 1000000 $
 --   toSortedList (mapMaybe f h) == List.sort (Maybe.mapMaybe f (toSortedList h))
--- 
+--
 -- return []
 -- main = $quickCheckAll

@@ -1,11 +1,11 @@
-{-# LANGUAGE PatternGuards, FlexibleInstances #-}
-import Criterion.Main
-import Twee.Term hiding (isFun, F)
+{-# LANGUAGE FlexibleInstances #-}
+import           Criterion.Main
+import           Data.Int
+import           Data.Maybe
+import           Test.QuickCheck hiding (Fun)
+import           Twee.Term       hiding (F, isFun)
 import qualified Twee.Term
-import Test.QuickCheck hiding (Fun)
-import Data.Int
-import Data.Maybe
-import Twee.Term.Core hiding (subst)
+import           Twee.Term.Core  hiding (subst)
 
 instance Num (Fun Int) where fromInteger n = F (fromInteger n)
 instance Num Var where fromInteger = V . fromInteger

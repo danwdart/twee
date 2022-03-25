@@ -2,8 +2,8 @@
 {-# LANGUAGE TypeFamilies #-}
 module Twee.Equation where
 
-import Twee.Base
-import Control.Monad
+import           Control.Monad
+import           Twee.Base
 
 --------------------------------------------------------------------------------
 -- * Equations.
@@ -45,7 +45,7 @@ order (l :=: r)
 -- Helper for 'order' and 'simplerThan'
 orderedSimplerThan :: Function f => Equation f -> Equation f -> Bool
 orderedSimplerThan (t1 :=: u1) (t2 :=: u2) =
-  t1 `lessEqSkolem` t2 && (t1 /= t2 || ((u1 `lessEqSkolem` u2 && u1 /= u2)))
+  t1 `lessEqSkolem` t2 && (t1 /= t2 || (u1 `lessEqSkolem` u2 && u1 /= u2))
 
 -- | Apply a function to both sides of an equation.
 bothSides :: (Term f -> Term f') -> Equation f -> Equation f'

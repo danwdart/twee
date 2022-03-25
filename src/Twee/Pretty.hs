@@ -3,14 +3,14 @@
 {-# LANGUAGE Rank2Types #-}
 module Twee.Pretty(module Twee.Pretty, module Text.PrettyPrint.HughesPJClass, Pretty(..)) where
 
-import Text.PrettyPrint.HughesPJClass hiding (empty, (<>))
+import           Data.Map                       (Map)
+import qualified Data.Map                       as Map
+import           Data.Ratio
+import           Data.Set                       (Set)
+import qualified Data.Set                       as Set
+import           Text.PrettyPrint.HughesPJClass hiding (empty, (<>))
 import qualified Text.PrettyPrint.HughesPJClass as PP
-import qualified Data.Map as Map
-import Data.Map(Map)
-import qualified Data.Set as Set
-import Data.Set(Set)
-import Data.Ratio
-import Twee.Term
+import           Twee.Term
 
 -- * Miscellaneous 'Pretty' instances and utilities.
 
@@ -92,7 +92,7 @@ highlight cs d =
 
 maybeHighlight :: [ANSICode] -> Maybe [Int] -> Doc -> Doc
 maybeHighlight cs (Just []) d = highlight cs d
-maybeHighlight _ _ d = d
+maybeHighlight _ _ d          = d
 
 instance (Labelled f, PrettyTerm f) => Pretty (HighlightedTerm f) where
   pPrintPrec l p (HighlightedTerm cs h (Var x)) =
@@ -105,7 +105,7 @@ instance (Labelled f, PrettyTerm f) => Pretty (HighlightedTerm f) where
       annotate i t =
         case h of
           Just (n:ns) | i == n -> HighlightedTerm cs (Just ns) t
-          _ -> HighlightedTerm cs Nothing t
+          _                    -> HighlightedTerm cs Nothing t
 
 instance (Labelled f, PrettyTerm f) => Pretty (TermList f) where
   pPrintPrec _ _ = pPrint . unpack
@@ -142,8 +142,7 @@ invisible =
       f [t] = pPrintPrec l p t
       f (t:ts) =
         maybeParens (p > 10) $
-          pPrint t <+>
-            (hsep (map (pPrintPrec l 11) ts))
+          pPrint t <+> hsep (map (pPrintPrec l 11) ts)
     in f
 
 -- | For functions that should be printed curried.
@@ -153,8 +152,7 @@ curried =
       f [] = d
       f xs =
         maybeParens (p > 10) $
-          d <+>
-            (hsep (map (pPrintPrec l 11) xs))
+          d <+> hsep (map (pPrintPrec l 11) xs)
     in f
 
 -- | For functions that should be printed uncurried.

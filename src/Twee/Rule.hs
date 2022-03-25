@@ -1,25 +1,30 @@
 -- | Term rewriting.
-{-# LANGUAGE TypeFamilies, FlexibleContexts, RecordWildCards, BangPatterns, OverloadedStrings, MultiParamTypeClasses, ScopedTypeVariables, GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE BangPatterns          #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE TypeFamilies          #-}
 module Twee.Rule where
 
-import Twee.Base
-import Twee.Constraints hiding (funs)
-import qualified Twee.Index as Index
-import Twee.Index(Index)
-import Control.Monad
-import Control.Monad.Trans.Class
-import Control.Monad.Trans.State.Strict
-import Data.Maybe
-import Data.List hiding (singleton)
-import Twee.Utils
-import qualified Data.Map.Strict as Map
-import Data.Map(Map)
-import qualified Twee.Term as Term
-import Data.Ord
-import Twee.Equation
-import qualified Twee.Proof as Proof
-import Twee.Proof(Derivation, Proof)
-import Data.Tuple
+import           Control.Monad
+import           Control.Monad.Trans.Class
+import           Control.Monad.Trans.State.Strict
+import           Data.List                        hiding (singleton)
+import           Data.Map                         (Map)
+import qualified Data.Map.Strict                  as Map
+import           Data.Maybe
+import           Data.Ord
+import           Data.Tuple
+import           Twee.Base
+import           Twee.Constraints                 hiding (funs)
+import           Twee.Equation
+import           Twee.Index                       (Index)
+import qualified Twee.Index                       as Index
+import           Twee.Proof                       (Derivation, Proof)
+import qualified Twee.Proof                       as Proof
+import qualified Twee.Term                        as Term
+import           Twee.Utils
 
 --------------------------------------------------------------------------------
 -- * Rewrite rules.
@@ -33,14 +38,14 @@ data Rule f =
     -- Invariant:
     -- For oriented rules: vars rhs `isSubsetOf` vars lhs
     -- For unoriented rules: vars lhs == vars rhs
-    
+
     -- | A proof that the rule holds.
-    rule_proof :: !(Proof f),
+    rule_proof  :: !(Proof f),
 
     -- | The left-hand side of the rule.
-    lhs :: {-# UNPACK #-} !(Term f),
+    lhs         :: {-# UNPACK #-} !(Term f),
     -- | The right-hand side of the rule.
-    rhs :: {-# UNPACK #-} !(Term f) }
+    rhs         :: {-# UNPACK #-} !(Term f) }
   deriving Show
 instance Eq (Rule f) where
   x == y = compare x y == EQ
@@ -56,7 +61,7 @@ ruleDerivation r =
         matchEquation (Proof.equation (rule_proof r)) (rhs r :=: lhs r)) of
     (Just sub, _) -> Proof.lemma (rule_proof r) sub
     (_, Just sub) -> Proof.symm (Proof.lemma (rule_proof r) sub)
-    _ -> error "rule out of sync with proof"
+    _             -> error "rule out of sync with proof"
 
 -- | A rule's orientation.
 --
@@ -68,7 +73,7 @@ data Orientation f =
     -- | A weakly oriented rule.
     -- The first argument is the minimal constant, the second argument is a list
     -- of terms which are weakly oriented in the rule.
-    -- 
+    --
     -- A rule with orientation @'WeaklyOriented' k ts@ can be used unless
     -- all terms in @ts@ are equal to @k@.
   | WeaklyOriented {-# UNPACK #-} !(Fun f) [Term f]
@@ -86,9 +91,9 @@ instance Ord (Orientation f) where compare _ _ = EQ
 
 -- | Is a rule oriented or weakly oriented?
 oriented :: Orientation f -> Bool
-oriented Oriented{} = True
+oriented Oriented{}       = True
 oriented WeaklyOriented{} = True
-oriented _ = False
+oriented _                = False
 
 instance Symbolic (Rule f) where
   type ConstantOf (Rule f) = f
@@ -101,24 +106,24 @@ instance f ~ g => Has (Rule f) (Term g) where
 instance Symbolic (Orientation f) where
   type ConstantOf (Orientation f) = f
 
-  termsDL Oriented = mzero
+  termsDL Oriented              = mzero
   termsDL (WeaklyOriented _ ts) = termsDL ts
-  termsDL (Permutative ts) = termsDL ts
-  termsDL Unoriented = mzero
+  termsDL (Permutative ts)      = termsDL ts
+  termsDL Unoriented            = mzero
 
-  subst_ _   Oriented = Oriented
+  subst_ _   Oriented                = Oriented
   subst_ sub (WeaklyOriented min ts) = WeaklyOriented min (subst_ sub ts)
-  subst_ sub (Permutative ts) = Permutative (subst_ sub ts)
-  subst_ _   Unoriented = Unoriented
+  subst_ sub (Permutative ts)        = Permutative (subst_ sub ts)
+  subst_ _   Unoriented              = Unoriented
 
 instance (Labelled f, PrettyTerm f) => Pretty (Rule f) where
   pPrint (Rule or _ l r) =
     pPrint l <+> text (showOrientation or) <+> pPrint r
     where
-      showOrientation Oriented = "->"
+      showOrientation Oriented         = "->"
       showOrientation WeaklyOriented{} = "~>"
-      showOrientation Permutative{} = "<->"
-      showOrientation Unoriented = "="
+      showOrientation Permutative{}    = "<->"
+      showOrientation Unoriented       = "="
 
 -- | Turn a rule into an equation.
 unorient :: Rule f -> Equation f
@@ -179,8 +184,8 @@ backwards :: Rule f -> Rule f
 backwards (Rule or pf t u) = Rule (back or) pf u t
   where
     back (Permutative xs) = Permutative (map swap xs)
-    back Unoriented = Unoriented
-    back _ = error "Can't turn oriented rule backwards"
+    back Unoriented       = Unoriented
+    back _                = error "Can't turn oriented rule backwards"
 
 --------------------------------------------------------------------------------
 -- * Extra-fast rewriting, without proof output or unorientable rules.
@@ -312,7 +317,7 @@ successors strat ps =
 successorsAndNormalForms :: Function f => Strategy f -> Map (Term f) (Reduction f) ->
   (Map (Term f) (Term f, Reduction f), Map (Term f) (Term f, Reduction f))
 successorsAndNormalForms strat ps =
-  go Map.empty Map.empty (Map.mapWithKey (\t red -> (t, red)) ps)
+  go Map.empty Map.empty (Map.mapWithKey (,) ps)
   where
     go dead norm ps =
       case Map.minViewWithKey ps of
@@ -325,7 +330,7 @@ successorsAndNormalForms strat ps =
             go (Map.insert t p dead) norm (Map.fromList qs `Map.union` ps)
           where
             qs =
-              [ (result t q, (fst p, (snd p `trans` q)))
+              [ (result t q, (fst p, snd p `trans` q))
               | q <- anywhere strat t ]
 
 -- | Apply a strategy anywhere in a term.
@@ -369,13 +374,13 @@ reducesWith _ (Rule (WeaklyOriented min ts) _ _ _) sub =
   -- (reducesWith is used in simplify).
   -- This is the same as:
   --   any (not . isMinimal) (subst sub ts)
-  any (not . isMinimal . expand) ts
+  not (all (isMinimal . expand) ts)
   where
     expand t@(Var x) = fromMaybe t (Term.lookup x sub)
-    expand t = t
+    expand t         = t
 
     isMinimal (App f Empty) = f == min
-    isMinimal _ = False
+    isMinimal _             = False
 reducesWith p (Rule (Permutative ts) _ _ _) sub =
   aux ts
   where
@@ -395,7 +400,7 @@ reducesWith p (Rule Unoriented _ t u) sub =
 -- | Check if a rule can be applied normally.
 {-# INLINEABLE reduces #-}
 reduces :: Function f => Rule f -> Subst f -> Bool
-reduces rule sub = reducesWith lessEq rule sub
+reduces = reducesWith lessEq
 
 -- | Check if a rule can be applied and is oriented.
 {-# INLINEABLE reducesOriented #-}
@@ -406,11 +411,9 @@ reducesOriented rule sub =
 -- | Check if a rule can be applied in a particular model.
 {-# INLINEABLE reducesInModel #-}
 reducesInModel :: Function f => Model f -> Rule f -> Subst f -> Bool
-reducesInModel cond rule sub =
-  reducesWith (\t u -> isJust (lessIn cond t u)) rule sub
+reducesInModel cond = reducesWith (\t u -> isJust (lessIn cond t u))
 
 -- | Check if a rule can be applied to the Skolemised version of a term.
 {-# INLINEABLE reducesSkolem #-}
 reducesSkolem :: Function f => Rule f -> Subst f -> Bool
-reducesSkolem rule sub =
-  reducesWith (\t u -> lessEqSkolem t u) rule sub
+reducesSkolem = reducesWith lessEqSkolem

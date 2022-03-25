@@ -1,4 +1,4 @@
-import System.Process
+import           System.Process
 
 runTwee :: [String] -> [String] -> String -> IO Bool
 runTwee args axioms conj = do
@@ -46,9 +46,7 @@ simplifyConjecture axioms lemmas conjecture = do
           return (Just (lemmas, conjecture))
         Nothing -> do
           res <- runTwee bad axioms lemma
-          case res of
-            True -> return Nothing
-            False -> return (Just (lemmas, lemma))
+          if res then return Nothing else return (Just (lemmas, lemma))
 
 maximiseAxioms :: [String] -> [String] -> String -> IO [String]
 maximiseAxioms axioms lemmas conjecture = loop [] (reverse lemmas)
@@ -56,11 +54,9 @@ maximiseAxioms axioms lemmas conjecture = loop [] (reverse lemmas)
     loop axioms' [] = return (axioms ++ axioms')
     loop axioms' (lemma:lemmas) = do
       res <- runTwee bad (axioms ++ axioms' ++ [lemma]) conjecture
-      case res of
-        False ->
-          loop (lemma:axioms') lemmas
-        True ->
-          loop axioms' lemmas
+      if res then
+        loop axioms' lemmas else
+        loop (lemma:axioms') lemmas
 
 minimiseAxioms :: [String] -> String -> IO [String]
 minimiseAxioms axioms conjecture = loop [] axioms
@@ -68,16 +64,14 @@ minimiseAxioms axioms conjecture = loop [] axioms
     loop axioms [] = return (reverse axioms)
     loop axioms (axiom:axioms') = do
       res <- runTwee good (axioms ++ axioms') conjecture
-      case res of
-        True -> do
-          res <- runTwee bad (axioms ++ axioms') conjecture
-          case res of
-            False ->
-              loop axioms axioms'
-            True ->
-              loop (axiom:axioms) axioms'
-        False ->
-          loop (axiom:axioms) axioms'
+      if res then (do
+        res <- runTwee bad (axioms ++ axioms') conjecture
+        case res of
+          False ->
+            loop axioms axioms'
+          True ->
+            loop (axiom:axioms) axioms') else
+        loop (axiom:axioms) axioms'
 
 selectAxiom :: [String] -> [String] -> String -> IO String
 selectAxiom axioms axioms' conjecture = loop axioms
@@ -85,16 +79,14 @@ selectAxiom axioms axioms' conjecture = loop axioms
     loop [] = error "no axiom worked"
     loop (axiom:axioms) = do
       res <- runTwee good (axiom:axioms') conjecture
-      case res of
-        True -> do
-          res <- runTwee bad (axiom:axioms') conjecture
-          case res of
-            False ->
-              return axiom
-            True ->
-              loop axioms
-        False ->
-          loop axioms
+      if res then (do
+        res <- runTwee bad (axiom:axioms') conjecture
+        case res of
+          False ->
+            return axiom
+          True ->
+            loop axioms) else
+        loop axioms
 
 reduceAxioms :: [String] -> [String] -> String -> IO [String]
 reduceAxioms axioms lemmas conjecture = loop [] axioms

@@ -2,11 +2,11 @@
 -- by serialising their contents as a @ByteString@.
 module Data.PackedSequence(PackedSequence, empty, null, size, fromList, toList, uncons) where
 
-import Prelude hiding (null)
-import Data.Serialize
-import Data.ByteString(ByteString)
+import           Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
-import Data.List(unfoldr)
+import           Data.List       (unfoldr)
+import           Data.Serialize
+import           Prelude         hiding (null)
 
 -- | A sequence, stored in a serialised form
 data PackedSequence a =
@@ -41,5 +41,5 @@ uncons :: Serialize a => PackedSequence a -> Maybe (a, PackedSequence a)
 uncons (Seq 0 _) = Nothing
 uncons (Seq n bs) =
   Just $ case runGetState get bs 0 of
-    Left err -> error err
+    Left err      -> error err
     Right (x, bs) -> (x, Seq (n-1) bs)

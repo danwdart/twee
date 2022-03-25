@@ -1,18 +1,18 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Main where
 
-import MaxCover
-import System.FilePath
-import System.FilePath.Glob
-import System.Directory
-import Control.Monad
-import Data.Ord
-import Data.List
-import Data.Maybe
-import Data.Time.Clock
-import qualified Data.Map as Map
-import Data.Map(Map)
-import Data.FileEmbed
+import           Control.Monad
+import           Data.FileEmbed
+import           Data.List
+import           Data.Map             (Map)
+import qualified Data.Map             as Map
+import           Data.Maybe
+import           Data.Ord
+import           Data.Time.Clock
+import           MaxCover
+import           System.Directory
+import           System.FilePath
+import           System.FilePath.Glob
 
 solvedInTime :: NominalDiffTime -> FilePath -> String -> IO Bool
 solvedInTime timeLimit dir prob = do
@@ -74,7 +74,7 @@ problemBonus (b0, b1, b2, b3, b4, b5) p =
     ebonus =
       case lookup p notE of
         Nothing -> 1
-        Just _ -> 1
+        Just _  -> 1
 
 greatProblemsBonus :: (Int, Int, Int, Int, Int, Int) -> String -> [String]
 greatProblemsBonus b p =
@@ -102,7 +102,7 @@ readResults ok = do
     let fast = solvedInTime 210
     let med  = solvedInTime 300
     let slow = solvedInTime (1/0)
-    
+
     return (name, (fast, med, slow))
 
 score results cover =
@@ -163,7 +163,7 @@ greedy results =
 
     f (name, probs) =
       case elemIndex name fixed of
-        Just i -> Right (-i)
+        Just i  -> Right (-i)
         Nothing -> Left (length probs)
 
 fixed :: [String]

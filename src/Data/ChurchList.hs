@@ -1,13 +1,15 @@
 -- | Church-encoded lists. Used in Twee.CP to make sure that fusion happens.
-{-# LANGUAGE Rank2Types, BangPatterns #-}
+{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE Rank2Types   #-}
 module Data.ChurchList where
 
-import Prelude(Functor(..), Applicative(..), Monad(..), Bool(..), Maybe(..), (.), ($), id)
+import           Control.Applicative (Alternative (..))
+import           Control.Monad       (MonadPlus (..), liftM2)
+import           GHC.Exts            (build)
+import           GHC.Magic           (oneShot)
+import           Prelude             (Applicative (..), Bool (..), Functor (..),
+                                      Maybe (..), Monad (..), id, ($), (.))
 import qualified Prelude
-import GHC.Magic(oneShot)
-import GHC.Exts(build)
-import Control.Monad(MonadPlus(..), liftM2)
-import Control.Applicative(Alternative(..))
 
 newtype ChurchList a =
   ChurchList (forall b. (a -> b -> b) -> b -> b)
@@ -20,7 +22,7 @@ foldr op e (ChurchList f) = eta (f op (eta e))
 {-# INLINE[0] eta #-}
 eta :: a -> a
 eta x = x
-{-# RULES "eta" forall f. eta f = \x -> f x #-}
+{-# RULES "eta" forall f. eta f = f #-}
 
 {-# INLINE nil #-}
 nil :: ChurchList a
@@ -40,7 +42,7 @@ append xs ys = ChurchList (\c n -> foldr c (foldr c n ys) xs)
 
 {-# INLINE join #-}
 join :: ChurchList (ChurchList a) -> ChurchList a
-join xss = ChurchList (\c n -> foldr (\xs ys -> foldr c ys xs) n xss)
+join xss = ChurchList (\c n -> foldr (flip (foldr c)) n xss)
 
 instance Functor ChurchList where
   {-# INLINE fmap #-}
@@ -56,7 +58,7 @@ instance Monad ChurchList where
   {-# INLINE return #-}
   return = unit
   {-# INLINE (>>=) #-}
-  xs >>= f = join (fmap f xs)
+  xs >>= f = f =<< xs
 
 instance Alternative ChurchList where
   {-# INLINE empty #-}
@@ -87,7 +89,7 @@ foldl' op e xs =
 filter :: (a -> Bool) -> ChurchList a -> ChurchList a
 filter p xs =
   ChurchList $ \c n ->
-    let            
+    let
       {-# INLINE op #-}
       op x xs = if p x then c x xs else xs
     in
@@ -95,7 +97,7 @@ filter p xs =
 
 {-# INLINE fromMaybe #-}
 fromMaybe :: Maybe a -> ChurchList a
-fromMaybe Nothing = nil
+fromMaybe Nothing  = nil
 fromMaybe (Just x) = unit x
 
 {-# INLINE null #-}

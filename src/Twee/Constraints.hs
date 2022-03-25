@@ -1,19 +1,21 @@
-{-# LANGUAGE FlexibleContexts, UndecidableInstances, RecordWildCards #-}
+{-# LANGUAGE FlexibleContexts     #-}
+{-# LANGUAGE RecordWildCards      #-}
+{-# LANGUAGE UndecidableInstances #-}
 -- | Solving constraints on variable ordering.
 module Twee.Constraints where
 
 --import Twee.Base hiding (equals, Term, pattern Fun, pattern Var, lookup, funs)
-import qualified Twee.Term as Flat
+import           Data.Function
+import           Data.Graph
+import           Data.List       hiding (singleton)
+import           Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
-import Twee.Pretty hiding (equals)
-import Twee.Utils
-import Data.Maybe
-import Data.List hiding (singleton)
-import Data.Function
-import Data.Graph
-import Data.Map.Strict(Map)
-import Data.Ord
-import Twee.Term hiding (lookup)
+import           Data.Maybe
+import           Data.Ord
+import           Twee.Pretty     hiding (equals)
+import           Twee.Term       hiding (lookup)
+import qualified Twee.Term       as Flat
+import           Twee.Utils
 
 data Atom f = Constant (Fun f) | Variable Var deriving (Show, Eq, Ord)
 
@@ -21,10 +23,10 @@ data Atom f = Constant (Fun f) | Variable Var deriving (Show, Eq, Ord)
 atoms :: Term f -> [Atom f]
 atoms t = aux (singleton t)
   where
-    aux Empty = []
+    aux Empty                  = []
     aux (Cons (App f Empty) t) = Constant f:aux t
-    aux (Cons (Var x) t) = Variable x:aux t
-    aux ConsSym{rest = t} = aux t
+    aux (Cons (Var x) t)       = Variable x:aux t
+    aux ConsSym{rest = t}      = aux t
 
 toTerm :: Atom f -> Term f
 toTerm (Constant f) = build (con f)
@@ -32,8 +34,8 @@ toTerm (Variable x) = build (var x)
 
 fromTerm :: Flat.Term f -> Maybe (Atom f)
 fromTerm (App f Empty) = Just (Constant f)
-fromTerm (Var x) = Just (Variable x)
-fromTerm _ = Nothing
+fromTerm (Var x)       = Just (Variable x)
+fromTerm _             = Nothing
 
 instance (Labelled f, PrettyTerm f) => Pretty (Atom f) where
   pPrint = pPrint . toTerm
@@ -55,19 +57,19 @@ instance (Labelled f, PrettyTerm f) => Pretty (Formula f) where
       (fsep (punctuate (text " &") (nest_ (map (pPrintPrec l 11) xs))))
     where
       nest_ (x:xs) = x:map (nest 2) xs
-      nest_ [] = undefined
+      nest_ []     = undefined
   pPrintPrec l p (Or xs) =
     maybeParens (p > 10)
       (fsep (punctuate (text " |") (nest_ (map (pPrintPrec l 11) xs))))
     where
       nest_ (x:xs) = x:map (nest 2) xs
-      nest_ [] = undefined
+      nest_ []     = undefined
 
 negateFormula :: Formula f -> Formula f
-negateFormula (Less t u) = LessEq u t
+negateFormula (Less t u)   = LessEq u t
 negateFormula (LessEq t u) = Less u t
-negateFormula (And ts) = Or (map negateFormula ts)
-negateFormula (Or ts) = And (map negateFormula ts)
+negateFormula (And ts)     = Or (map negateFormula ts)
+negateFormula (Or ts)      = And (map negateFormula ts)
 
 conj forms
   | false `elem` forms' = false
@@ -77,7 +79,7 @@ conj forms
       xs  -> And xs
   where
     flatten (And xs) = xs
-    flatten x = [x]
+    flatten x        = [x]
     forms' = filter (/= true) (usort (concatMap flatten forms))
 disj forms
   | true `elem` forms' = true
@@ -87,7 +89,7 @@ disj forms
       xs  -> Or xs
   where
     flatten (Or xs) = xs
-    flatten x = [x]
+    flatten x       = [x]
     forms' = filter (/= false) (usort (concatMap flatten forms))
 
 x &&& y = conj [x, y]
@@ -98,9 +100,9 @@ false = Or []
 data Branch f =
   -- Branches are kept normalised wrt equals
   Branch {
-    funs        :: [Fun f],
-    less        :: [(Atom f, Atom f)],  -- sorted
-    equals      :: [(Atom f, Atom f)] } -- sorted, greatest atom first in each pair
+    funs   :: [Fun f],
+    less   :: [(Atom f, Atom f)],  -- sorted
+    equals :: [(Atom f, Atom f)] } -- sorted, greatest atom first in each pair
   deriving (Eq, Ord)
 
 instance (Labelled f, PrettyTerm f) => Pretty (Branch f) where
@@ -123,16 +125,16 @@ contradictory Branch{..} =
     [(x, x, [y | (x', y) <- less, x == x']) | x <- usort (map fst less)])
   where
     cyclic (AcyclicSCC _) = False
-    cyclic (CyclicSCC _) = True
+    cyclic (CyclicSCC _)  = True
 
 formAnd :: (Minimal f, Ordered f, Labelled f) => Formula f -> [Branch f] -> [Branch f]
 formAnd f bs = usort (bs >>= add f)
   where
-    add (Less t u) b = addLess t u b
+    add (Less t u) b   = addLess t u b
     add (LessEq t u) b = addLess t u b ++ addEquals t u b
-    add (And []) b = [b]
+    add (And []) b     = [b]
     add (And (f:fs)) b = add f b >>= add (And fs)
-    add (Or fs) b = usort (concat [ add f b | f <- fs ])
+    add (Or fs) b      = usort (concat [ add f b | f <- fs ])
 
 branches :: (Minimal f, Ordered f, Labelled f) => Formula f -> [Branch f]
 branches x = aux [x]
@@ -224,7 +226,7 @@ weakenModel (Model m) =
     glue [] = []
     glue [_] = []
     glue (a@(_x, (i1, j1)):b@(y, (i2, _)):xs) =
-      [ (a:(y, (i1, j1+1)):xs) | i1 < i2 ] ++
+      [ a:(y, (i1, j1+1)):xs | i1 < i2 ] ++
       map (a:) (glue (b:xs))
 
     -- We must never make two constants equal
@@ -245,7 +247,7 @@ varGroups (Model m) = filter nonempty (go minimal (map fst (sortBy (comparing sn
     isVariable (Variable _) = True
     unVariable (Variable x) = x
     nonempty (_, [], _) = False
-    nonempty _ = True
+    nonempty _          = True
 
 class Minimal f where
   minimal :: Fun f

@@ -1,15 +1,18 @@
 -- | A queue where entries can be added in batches and stored compactly.
-{-# LANGUAGE TypeFamilies, RecordWildCards, FlexibleContexts, ScopedTypeVariables #-}
+{-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE RecordWildCards     #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies        #-}
 module Data.BatchedQueue(
   Queue, Batch(..), StandardBatch, unbatch, empty, insert, removeMin, removeMinFilter, mapMaybe, toBatches, toList, size) where
 
-import qualified Data.Heap as Heap
-import Data.List(unfoldr, sort, foldl')
+import qualified Data.Heap           as Heap
+import           Data.List           (foldl', sort, unfoldr)
 import qualified Data.Maybe
-import Data.PackedSequence(PackedSequence)
+import           Data.Ord
+import           Data.PackedSequence (PackedSequence)
 import qualified Data.PackedSequence as PackedSequence
-import Data.Serialize
-import Data.Ord
+import           Data.Serialize
 
 -- | A queue of batches.
 newtype Queue a = Queue (Heap.Heap (Best a))
@@ -21,7 +24,7 @@ class Ord (Entry a) => Batch a where
   -- A label represents a piece of information which is
   -- shared in common between all entries in a batch,
   -- and which might be used to store that batch more
-  -- efficiently. 
+  -- efficiently.
   -- Labels are optional, and by default @Label a = ()@.
   type Label a
 
@@ -34,7 +37,7 @@ class Ord (Entry a) => Batch a where
 
   -- | Remove the smallest entry from a batch.
   unconsBatch :: a -> (Entry a, Maybe a)
-  
+
   -- | Return the label of a batch.
   batchLabel :: a -> Label a
 
@@ -72,7 +75,7 @@ insert l is (Queue q) =
 -- | Remove the minimum entry from the queue.
 {-# INLINEABLE removeMin #-}
 removeMin :: Batch a => Queue a -> Maybe (Entry a, Queue a)
-removeMin q = removeMinFilter (const True) q
+removeMin = removeMinFilter (const True)
 
 -- | Remove the minimum entry from the queue, discarding any
 -- batches that do not satisfy the predicate.
@@ -99,9 +102,9 @@ mapMaybe f (Queue q) = Queue (Heap.mapMaybe g q)
         [] -> Nothing
         is ->
           case makeBatch (batchLabel batch) (sort is) of
-            [] -> Nothing
+            []       -> Nothing
             [batch'] -> Just (Best batch')
-            _ -> error "multiple batches produced"
+            _        -> error "multiple batches produced"
 
 -- | Convert a queue into a list of batches, in unspecified order.
 {-# INLINEABLE toBatches #-}
@@ -138,7 +141,7 @@ instance (Ord a, Serialize a) => Batch (StandardBatch a) where
   unconsBatch StandardBatch{..} =
     (batch_best,
      case PackedSequence.uncons batch_rest of
-       Nothing -> Nothing
+       Nothing      -> Nothing
        Just (x, xs) -> Just (StandardBatch x xs))
   batchLabel _ = ()
   batchSize StandardBatch{..} = 1 + PackedSequence.size batch_rest

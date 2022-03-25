@@ -1,44 +1,55 @@
 -- | The main prover loop.
-{-# LANGUAGE RecordWildCards, MultiParamTypeClasses, GADTs, BangPatterns, OverloadedStrings, ScopedTypeVariables, GeneralizedNewtypeDeriving, PatternGuards, TypeFamilies, FlexibleInstances #-}
+{-# LANGUAGE BangPatterns          #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE GADTs                 #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE PatternGuards         #-}
+{-# LANGUAGE RecordWildCards       #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE TypeFamilies          #-}
 module Twee where
 
-import Twee.Base
-import Twee.Rule hiding (normalForms)
-import qualified Twee.Rule as Rule
-import Twee.Equation
-import qualified Twee.Proof as Proof
-import Twee.Proof(Axiom(..), Proof(..), Derivation, ProvedGoal(..), provedGoal, certify, derivation)
-import Twee.CP hiding (Config)
-import qualified Twee.CP as CP
-import Twee.Join hiding (Config, defaultConfig)
-import qualified Twee.Join as Join
-import qualified Twee.Rule.Index as RuleIndex
-import Twee.Rule.Index(RuleIndex(..))
-import qualified Twee.Index as Index
-import Twee.Index(Index)
-import Twee.Constraints
-import Twee.Utils
-import Twee.Task
-import qualified Data.BatchedQueue as Queue
-import Data.BatchedQueue(Queue)
-import qualified Data.IntMap.Strict as IntMap
-import Data.IntMap(IntMap)
-import Data.Maybe
-import Data.List
-import Data.Function
-import qualified Data.Map.Strict as Map
-import Data.Map(Map)
-import Data.Int
-import Control.Monad
-import Control.Monad.IO.Class
-import Control.Monad.Trans.Class
+import           Control.Monad
+import           Control.Monad.IO.Class
+import           Control.Monad.Trans.Class
 import qualified Control.Monad.Trans.State.Strict as StateM
-import qualified Data.IntSet as IntSet
-import Data.IntSet(IntSet)
-import Twee.Profile
-import Data.Ord
-import Data.PackedSequence(PackedSequence)
-import qualified Data.PackedSequence as PackedSequence
+import           Data.BatchedQueue                (Queue)
+import qualified Data.BatchedQueue                as Queue
+import           Data.Function
+import           Data.Int
+import           Data.IntMap                      (IntMap)
+import qualified Data.IntMap.Strict               as IntMap
+import           Data.IntSet                      (IntSet)
+import qualified Data.IntSet                      as IntSet
+import           Data.List
+import           Data.Map                         (Map)
+import qualified Data.Map.Strict                  as Map
+import           Data.Maybe
+import           Data.Ord
+import           Data.PackedSequence              (PackedSequence)
+import qualified Data.PackedSequence              as PackedSequence
+import           Twee.Base
+import           Twee.CP                          hiding (Config)
+import qualified Twee.CP                          as CP
+import           Twee.Constraints
+import           Twee.Equation
+import           Twee.Index                       (Index)
+import qualified Twee.Index                       as Index
+import           Twee.Join                        hiding (Config, defaultConfig)
+import qualified Twee.Join                        as Join
+import           Twee.Profile
+import           Twee.Proof                       (Axiom (..), Derivation,
+                                                   Proof (..), ProvedGoal (..),
+                                                   certify, derivation,
+                                                   provedGoal)
+import qualified Twee.Proof                       as Proof
+import           Twee.Rule                        hiding (normalForms)
+import qualified Twee.Rule                        as Rule
+import           Twee.Rule.Index                  (RuleIndex (..))
+import qualified Twee.Rule.Index                  as RuleIndex
+import           Twee.Task
+import           Twee.Utils
 
 ----------------------------------------------------------------------
 -- * Configuration and prover state.
@@ -47,35 +58,35 @@ import qualified Data.PackedSequence as PackedSequence
 -- | The prover configuration.
 data Config f =
   Config {
-    cfg_accept_term            :: Maybe (Term f -> Bool),
-    cfg_max_critical_pairs     :: Int64,
-    cfg_max_cp_depth           :: Int,
-    cfg_simplify               :: Bool,
-    cfg_renormalise_percent    :: Int,
-    cfg_cp_sample_size         :: Int,
-    cfg_renormalise_threshold  :: Int,
-    cfg_set_join_goals         :: Bool,
-    cfg_always_simplify        :: Bool,
-    cfg_complete_subsets       :: Bool,
-    cfg_critical_pairs         :: CP.Config,
-    cfg_join                   :: Join.Config,
-    cfg_proof_presentation     :: Proof.Config f }
+    cfg_accept_term           :: Maybe (Term f -> Bool),
+    cfg_max_critical_pairs    :: Int64,
+    cfg_max_cp_depth          :: Int,
+    cfg_simplify              :: Bool,
+    cfg_renormalise_percent   :: Int,
+    cfg_cp_sample_size        :: Int,
+    cfg_renormalise_threshold :: Int,
+    cfg_set_join_goals        :: Bool,
+    cfg_always_simplify       :: Bool,
+    cfg_complete_subsets      :: Bool,
+    cfg_critical_pairs        :: CP.Config,
+    cfg_join                  :: Join.Config,
+    cfg_proof_presentation    :: Proof.Config f }
 
 -- | The prover state.
 data State f =
   State {
-    st_rules          :: !(RuleIndex f (Rule f)),
-    st_active_set     :: !(IntMap (Active f)),
-    st_joinable       :: !(Index f (Equation f)),
-    st_goals          :: ![Goal f],
-    st_queue          :: !(Queue Batch),
-    st_next_active    :: {-# UNPACK #-} !Id,
-    st_considered     :: {-# UNPACK #-} !Int64,
-    st_simplified_at  :: {-# UNPACK #-} !Id,
-    st_cp_sample      :: !(Sample (Maybe (Overlap (Active f) f))),
-    st_not_complete   :: !IntSet,
-    st_complete       :: !(Index f (Rule f)),
-    st_messages_rev   :: ![Message f] }
+    st_rules         :: !(RuleIndex f (Rule f)),
+    st_active_set    :: !(IntMap (Active f)),
+    st_joinable      :: !(Index f (Equation f)),
+    st_goals         :: ![Goal f],
+    st_queue         :: !(Queue Batch),
+    st_next_active   :: {-# UNPACK #-} !Id,
+    st_considered    :: {-# UNPACK #-} !Int64,
+    st_simplified_at :: {-# UNPACK #-} !Id,
+    st_cp_sample     :: !(Sample (Maybe (Overlap (Active f) f))),
+    st_not_complete  :: !IntSet,
+    st_complete      :: !(Index f (Rule f)),
+    st_messages_rev  :: ![Message f] }
 
 -- | The default prover configuration.
 defaultConfig :: Config f
@@ -98,7 +109,7 @@ defaultConfig =
 -- | Does this configuration run the prover in a complete mode?
 configIsComplete :: Config f -> Bool
 configIsComplete Config{..} =
-  isNothing (cfg_accept_term) &&
+  isNothing cfg_accept_term &&
   cfg_max_critical_pairs == maxBound &&
   cfg_max_cp_depth == maxBound
 
@@ -209,10 +220,10 @@ instance Ord Passive where
 
 data Batch =
   Batch {
-    batch_kind      :: !BatchKind,
-    batch_rule      :: {-# UNPACK #-} !Id,
-    batch_best      :: {-# UNPACK #-} !Passive,
-    batch_rest      :: {-# UNPACK #-} !(PackedSequence (Int32, Id, How)) }
+    batch_kind :: !BatchKind,
+    batch_rule :: {-# UNPACK #-} !Id,
+    batch_best :: {-# UNPACK #-} !Passive,
+    batch_rest :: {-# UNPACK #-} !(PackedSequence (Int32, Id, How)) }
 
 data BatchKind = Rule1 | Rule2 deriving Eq
 
@@ -232,7 +243,7 @@ instance Queue.Batch Batch where
            batch_kind = kind,
            batch_rule = rule,
            batch_best = p,
-           batch_rest = 
+           batch_rest =
              PackedSequence.fromList $
                [ (passive_score, if kind == Rule1 then passive_rule2 else passive_rule1, passive_how)
                | Passive{..} <- ps ] }]
@@ -273,7 +284,7 @@ findPassive State{..} Passive{..} = do
 
 -- | Renormalise a queued Passive.
 {-# INLINEABLE simplifyPassive #-}
-simplifyPassive :: Function f => Config f -> State f -> Passive -> Maybe (Passive)
+simplifyPassive :: Function f => Config f -> State f -> Passive -> Maybe Passive
 simplifyPassive Config{..} state@State{..} passive = do
   overlap <- findPassive state passive
   overlap <- simplifyOverlap (index_oriented st_rules) overlap
@@ -327,7 +338,7 @@ dequeue Config{..} state@State{..} =
       let ok id = fromIntegral id `IntMap.member` st_active_set
       (passive, queue) <- Queue.removeMinFilter ok queue
       case findPassive state passive of
-        Just (overlap@Overlap{overlap_eqn = t :=: u, overlap_rule1 = rule1, overlap_rule2 = rule2})
+        Just overlap@Overlap{overlap_eqn = t :=: u, overlap_rule1 = rule1, overlap_rule2 = rule2}
           | fromMaybe True (cfg_accept_term <*> pure t),
             fromMaybe True (cfg_accept_term <*> pure u),
             cp <- makeCriticalPair overlap ->
@@ -346,13 +357,13 @@ dequeue Config{..} state@State{..} =
 
 data Active f =
   Active {
-    active_id    :: {-# UNPACK #-} !Id,
-    active_info  :: {-# UNPACK #-} !Info,
-    active_rule  :: {-# UNPACK #-} !(Rule f),
-    active_top   :: !(Maybe (Term f)),
-    active_proof :: {-# UNPACK #-} !(Proof f),
+    active_id        :: {-# UNPACK #-} !Id,
+    active_info      :: {-# UNPACK #-} !Info,
+    active_rule      :: {-# UNPACK #-} !(Rule f),
+    active_top       :: !(Maybe (Term f)),
+    active_proof     :: {-# UNPACK #-} !(Proof f),
     -- A model in which the rule is false (used when reorienting)
-    active_model :: !(Model f),
+    active_model     :: !(Model f),
     active_positions :: !(Positions2 f) }
 
 active_cp :: Active f -> CriticalPair f
@@ -366,7 +377,7 @@ activeRules :: Active f -> [Rule f]
 activeRules Active{..} =
   case active_positions of
     ForwardsPos _ -> [active_rule]
-    BothPos _ _ -> [active_rule, backwards active_rule]
+    BothPos _ _   -> [active_rule, backwards active_rule]
 
 data Info =
   Info {
@@ -466,8 +477,7 @@ deleteActive state@State{..} active@Active{..} =
 -- Try to join a critical pair.
 {-# INLINEABLE consider #-}
 consider :: Function f => Config f -> State f -> Info -> CriticalPair f -> State f
-consider config state info cp =
-  considerUsing (st_rules state) config state info cp
+consider config state = considerUsing (st_rules state) config state
 
 -- Try to join a critical pair, but using a different set of critical
 -- pairs for normalisation.
@@ -618,7 +628,7 @@ recomputeGoals config state =
     state' =
       normaliseGoals config (state { st_goals = map resetGoal (st_goals state) })
 
-    forceList [] = ()
+    forceList []     = ()
     forceList (x:xs) = x `seq` forceList xs
 
 resetGoal :: Goal f -> Goal f
@@ -816,8 +826,7 @@ completePure cfg state
 
 {-# INLINEABLE normaliseTerm #-}
 normaliseTerm :: Function f => State f -> Term f -> Reduction f
-normaliseTerm State{..} t =
-  normaliseWith (const True) (rewrite reduces (index_all st_rules)) t
+normaliseTerm State{..} = normaliseWith (const True) (rewrite reduces (index_all st_rules))
 
 {-# INLINEABLE normalForms #-}
 normalForms :: Function f => State f -> Term f -> Map (Term f) (Reduction f)
@@ -827,5 +836,4 @@ normalForms State{..} t =
 
 {-# INLINEABLE simplifyTerm #-}
 simplifyTerm :: Function f => State f -> Term f -> Term f
-simplifyTerm State{..} t =
-  simplify (index_oriented st_rules) t
+simplifyTerm State{..} = simplify (index_oriented st_rules)

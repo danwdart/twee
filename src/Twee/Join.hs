@@ -1,28 +1,31 @@
 -- | Tactics for joining critical pairs.
-{-# LANGUAGE FlexibleContexts, BangPatterns, RecordWildCards, TypeFamilies, ScopedTypeVariables #-}
+{-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE RecordWildCards     #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies        #-}
 module Twee.Join where
 
-import Twee.Base
-import Twee.Rule
-import Twee.Equation
-import qualified Twee.Proof as Proof
-import Twee.CP hiding (Config)
-import Twee.Constraints hiding (funs)
-import qualified Twee.Index as Index
-import Twee.Index(Index)
-import Twee.Rule.Index(RuleIndex(..))
-import Twee.Utils
-import Data.Maybe
-import Data.Either
-import Data.Ord
-import qualified Data.Map.Strict as Map
+import           Data.Either
+import qualified Data.Map.Strict  as Map
+import           Data.Maybe
+import           Data.Ord
+import           Twee.Base
+import           Twee.CP          hiding (Config)
+import           Twee.Constraints hiding (funs)
+import           Twee.Equation
+import           Twee.Index       (Index)
+import qualified Twee.Index       as Index
+import qualified Twee.Proof       as Proof
+import           Twee.Rule
+import           Twee.Rule.Index  (RuleIndex (..))
+import           Twee.Utils
 
 data Config =
   Config {
-    cfg_ground_join :: !Bool,
-    cfg_use_connectedness_standalone :: !Bool,
+    cfg_ground_join                         :: !Bool,
+    cfg_use_connectedness_standalone        :: !Bool,
     cfg_use_connectedness_in_ground_joining :: !Bool,
-    cfg_set_join :: !Bool }
+    cfg_set_join                            :: !Bool }
 
 defaultConfig :: Config
 defaultConfig =
@@ -59,7 +62,7 @@ joinCriticalPair config eqns idx mmodel cp@CriticalPair{cp_eqn = t :=: u} =
       Right (Just cp, [])
     Just cp ->
       case groundJoinFromMaybe config eqns idx mmodel (branches (And [])) cp of
-        Left model -> Left (cp, model)
+        Left model       -> Left (cp, model)
         Right (mcp, cps) -> Right (mcp, cps)
 
 {-# INLINEABLE step1 #-}
@@ -97,9 +100,10 @@ step3 cfg@Config{..} eqns idx cp
       Just top ->
         case (join (cp, top), join (flipCP (cp, top))) of
           (Just cp1, Just cp2) ->
-            case simplerThan (cp_eqn cp1) (cp_eqn cp2) of
-              True -> Just cp1
-              False -> Just cp2
+            (if simplerThan (cp_eqn cp1) (cp_eqn cp2) then
+                Just cp1
+            else
+                Just cp2)
           _ -> Nothing
       _ -> Just cp
   where
@@ -193,10 +197,10 @@ groundJoinFrom config@Config{..} eqns idx model ctx cp@CriticalPair{cp_eqn = t :
           | otherwise =
             optimise weakenModel (not . modelOK) model
 
-        diag [] = Or []
+        diag []     = Or []
         diag (r:rs) = negateFormula r ||| (weaken r &&& diag rs)
         weaken (LessEq t u) = Less t u
-        weaken x = x
+        weaken x            = x
         ctx' = formAnd (diag (modelToLiterals model')) ctx in
 
       case groundJoin config eqns idx ctx' cp of

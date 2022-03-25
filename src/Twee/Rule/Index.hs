@@ -1,14 +1,17 @@
-{-# LANGUAGE RecordWildCards, ScopedTypeVariables, FlexibleContexts, TypeFamilies #-}
+{-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE RecordWildCards     #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies        #-}
 module Twee.Rule.Index(
   RuleIndex(..),
   empty, insert, delete,
   matches, lookup) where
 
-import Prelude hiding (lookup)
-import Twee.Base hiding (lookup, empty)
-import Twee.Rule
-import Twee.Index hiding (insert, delete, empty)
+import           Prelude    hiding (lookup)
+import           Twee.Base  hiding (empty, lookup)
+import           Twee.Index hiding (delete, empty, insert)
 import qualified Twee.Index as Index
+import           Twee.Rule
 
 data RuleIndex f a =
   RuleIndex {
@@ -28,7 +31,7 @@ insert t x RuleIndex{..} =
     Rule or _ _ _ = the x :: Rule f
 
     insertWhen False idx = idx
-    insertWhen True idx = Index.insert t x idx
+    insertWhen True idx  = Index.insert t x idx
 
 delete :: forall f a. (Symbolic a, ConstantOf a ~ f, Eq a, Has a (Rule f)) => Term f -> a -> RuleIndex f a -> RuleIndex f a
 delete t x RuleIndex{..} =
@@ -39,4 +42,4 @@ delete t x RuleIndex{..} =
     Rule or _ _ _ = the x :: Rule f
 
     deleteWhen False idx = idx
-    deleteWhen True idx = Index.delete t x idx
+    deleteWhen True idx  = Index.delete t x idx

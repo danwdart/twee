@@ -5,12 +5,15 @@ module Data.Primitive.SmallArray.Checked(
   module Data.Primitive.SmallArray,
   module Data.Primitive.SmallArray.Checked) where
 
-import Control.Monad.Primitive
+import           Control.Monad.Primitive
+import           Data.Primitive.Checked
+import           Data.Primitive.SmallArray (SmallArray (..),
+                                            SmallMutableArray (..),
+                                            newSmallArray, sizeofSmallArray,
+                                            sizeofSmallMutableArray,
+                                            unsafeFreezeSmallArray,
+                                            unsafeThawSmallArray)
 import qualified Data.Primitive.SmallArray as P
-import Data.Primitive.SmallArray(
-  SmallArray(..), SmallMutableArray(..), newSmallArray, unsafeFreezeSmallArray,
-  unsafeThawSmallArray, sizeofSmallArray, sizeofSmallMutableArray)
-import Data.Primitive.Checked
 
 instance Sized (SmallArray a) where
   size = sizeofSmallArray

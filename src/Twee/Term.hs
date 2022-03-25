@@ -13,7 +13,14 @@
 --   * substitutions ('Substitution', 'Subst', 'subst');
 --   * unification ('unify') and matching ('match');
 --   * miscellaneous useful functions on terms.
-{-# LANGUAGE BangPatterns, PatternSynonyms, ViewPatterns, TypeFamilies, OverloadedStrings, ScopedTypeVariables, CPP, DefaultSignatures #-}
+{-# LANGUAGE BangPatterns        #-}
+{-# LANGUAGE CPP                 #-}
+{-# LANGUAGE DefaultSignatures   #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE PatternSynonyms     #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies        #-}
+{-# LANGUAGE ViewPatterns        #-}
 {-# OPTIONS_GHC -O2 -fmax-worker-args=100 #-}
 #ifdef USE_LLVM
 {-# OPTIONS_GHC -fllvm #-}
@@ -65,20 +72,20 @@ module Twee.Term(
   -- * Miscellaneous functions
   bound, boundList, boundLists, mapFun, mapFunList, (<<)) where
 
-import Prelude hiding (lookup)
-import Twee.Term.Core hiding (F)
-import qualified Twee.Term.Core as Core
-import Data.List hiding (lookup, find, singleton)
-import Data.Maybe
+import           Data.List          hiding (find, lookup, singleton)
+import           Data.Maybe
+import           Prelude            hiding (lookup)
+import           Twee.Term.Core     hiding (F)
+import qualified Twee.Term.Core     as Core
 #if __GLASGOW_HASKELL__ < 804
-import Data.Semigroup(Semigroup(..))
+import           Data.Semigroup     (Semigroup (..))
 #endif
-import Data.IntMap.Strict(IntMap)
+import           Control.Arrow      ((&&&))
+import           Data.IntMap.Strict (IntMap)
 import qualified Data.IntMap.Strict as IntMap
-import Control.Arrow((&&&))
-import Twee.Utils
-import qualified Data.Label as Label
-import Data.Typeable
+import qualified Data.Label         as Label
+import           Data.Typeable
+import           Twee.Utils
 
 --------------------------------------------------------------------------------
 -- * A type class for builders
@@ -184,8 +191,8 @@ class Substitution s where
   substList :: s -> TermList (SubstFun s) -> Builder (SubstFun s)
   substList sub ts = aux ts
     where
-      aux Empty = mempty
-      aux (Cons (Var x) ts) = evalSubst sub x <> aux ts
+      aux Empty                = mempty
+      aux (Cons (Var x) ts)    = evalSubst sub x <> aux ts
       aux (Cons (App f ts) us) = app f (aux ts) <> aux us
 
 instance (Build a, v ~ Var) => Substitution (v -> a) where
@@ -276,9 +283,9 @@ idempotent !sub = allSubst (\_ t -> sub `idempotentOn` t) sub
 idempotentOn :: Subst f -> TermList f -> Bool
 idempotentOn !sub = aux
   where
-    aux Empty = True
+    aux Empty                         = True
     aux ConsSym{hd = App{}, rest = t} = aux t
-    aux (Cons (Var x) t) = isNothing (lookupList x sub) && aux t
+    aux (Cons (Var x) t)              = isNothing (lookupList x sub) && aux t
 
 -- | Iterate a triangle substitution to make it idempotent.
 close :: TriangleSubst f -> Subst f
@@ -345,7 +352,7 @@ matchIn sub pat t = matchListIn sub (singleton pat) (singleton t)
 -- | A variant of 'match' which works on termlists.
 {-# INLINE matchList #-}
 matchList :: TermList f -> TermList f -> Maybe (Subst f)
-matchList pat t = matchListIn emptySubst pat t
+matchList = matchListIn emptySubst
 
 -- | A variant of 'match' which works on termlists
 -- and extends an existing substitution.
@@ -353,7 +360,7 @@ matchListIn :: Subst f -> TermList f -> TermList f -> Maybe (Subst f)
 matchListIn !sub !pat !t
   | lenList t < lenList pat = Nothing
   | otherwise =
-    let 
+    let
         loop !sub ConsSym{hd = pat, tl = pats, rest = pats1} !ts = do
           ConsSym{hd = t, tl = ts, rest = ts1} <- Just ts
           case (pat, t) of
@@ -369,7 +376,7 @@ matchListIn !sub !pat !t
 
 -- | A variant of 'match' which works on lists of terms.
 matchMany :: [Term f] -> [Term f] -> Maybe (Subst f)
-matchMany pat t = matchManyIn emptySubst pat t
+matchMany = matchManyIn emptySubst
 
 -- | A variant of 'match' which works on lists of terms,
 -- and extends an existing substitution.
@@ -378,7 +385,7 @@ matchManyIn sub ts us = matchManyListIn sub (map singleton ts) (map singleton us
 
 -- | A variant of 'match' which works on lists of termlists.
 matchManyList :: [TermList f] -> [TermList f] -> Maybe (Subst f)
-matchManyList pat t = matchManyListIn emptySubst pat t
+matchManyList = matchManyListIn emptySubst
 
 -- | A variant of 'match' which works on lists of termlists,
 -- and extends an existing substitution.
@@ -408,15 +415,15 @@ instance Substitution (TriangleSubst f) where
   {-# INLINE evalSubst #-}
   evalSubst (Triangle sub) x =
     case lookupList x sub of
-      Nothing  -> var x
-      Just ts  -> substList (Triangle sub) ts
+      Nothing -> var x
+      Just ts -> substList (Triangle sub) ts
 
   -- Redefine substList to get better inlining behaviour
   {-# INLINE substList #-}
   substList (Triangle sub) ts = aux ts
     where
-      aux Empty = mempty
-      aux (Cons (Var x) ts) = auxVar x <> aux ts
+      aux Empty                = mempty
+      aux (Cons (Var x) ts)    = auxVar x <> aux ts
       aux (Cons (App f ts) us) = app f (aux ts) <> aux us
 
       auxVar x =
@@ -455,7 +462,7 @@ unifyTri t u = unifyListTri (singleton t) (singleton u)
 
 -- | Unify two terms, starting from an existing substitution.
 unifyTriFrom :: Term f -> Term f -> TriangleSubst f -> Maybe (TriangleSubst f)
-unifyTriFrom t u sub = unifyListTriFrom (singleton t) (singleton u) sub
+unifyTriFrom t u = unifyListTriFrom (singleton t) (singleton u)
 
 -- | Unify two termlists, returning a triangle substitution.
 -- This is slightly faster than 'unify'.
@@ -467,7 +474,7 @@ unifyListTriFrom !t !u (Triangle !sub) =
   fmap Triangle (loop sub t u)
   where
     loop !_ !_ !_ | never = undefined
-    loop sub (ConsSym{hd = t, tl = ts, rest = ts1}) u = do
+    loop sub ConsSym {hd = t, tl = ts, rest = ts1} u = do
       ConsSym{hd = u, tl = us, rest =  us1} <- Just u
       case (t, u) of
         (App f _, App g _) | f == g ->
@@ -485,7 +492,7 @@ unifyListTriFrom !t !u (Triangle !sub) =
     {-# INLINE var #-}
     var sub x t =
       case lookupList x sub of
-        Just u -> loop sub u (singleton t)
+        Just u  -> loop sub u (singleton t)
         Nothing -> var1 sub x t
 
     var1 sub x t@(Var y)
@@ -499,7 +506,7 @@ unifyListTriFrom !t !u (Triangle !sub) =
       occurs sub x (singleton t)
       extend x t sub
 
-    occurs !sub !x (ConsSym{hd = t, rest = ts}) =
+    occurs !sub !x ConsSym {hd = t, rest = ts} =
       case t of
         App{} -> occurs sub x ts
         Var y
@@ -530,7 +537,7 @@ children t =
 unpack :: TermList f -> [Term f]
 unpack t = unfoldr op t
   where
-    op Empty = Nothing
+    op Empty       = Nothing
     op (Cons t ts) = Just (t, ts)
 
 instance (Labelled f, Show f) => Show (Term f) where
@@ -558,7 +565,7 @@ lookup x s = do
 -- | Add a new binding to a substitution.
 {-# INLINE extend #-}
 extend :: Var -> Term f -> Subst f -> Maybe (Subst f)
-extend x t sub = extendList x (singleton t) sub
+extend x t = extendList x (singleton t)
 
 -- | Find the length of a term.
 {-# INLINE len #-}
@@ -572,11 +579,11 @@ bound t = boundList (singleton t)
 
 -- | Return the lowest- and highest-numbered variables in a termlist.
 boundList :: TermList f -> (Var, Var)
-boundList t = boundListFrom (V maxBound, V minBound) t
+boundList = boundListFrom (V maxBound, V minBound)
 
 -- | Return the lowest- and highest-numbered variables in a list of termlists.
 boundLists :: [TermList f] -> (Var, Var)
-boundLists ts = foldl' boundListFrom (V maxBound, V minBound) ts
+boundLists = foldl' boundListFrom (V maxBound, V minBound)
 
 {-# INLINE boundListFrom #-}
 boundListFrom :: (Var, Var) -> TermList f -> (Var, Var)
@@ -595,7 +602,7 @@ occurs x t = occursList x (singleton t)
 subtermsList :: TermList f -> [Term f]
 subtermsList t = unfoldr op t
   where
-    op Empty = Nothing
+    op Empty                     = Nothing
     op ConsSym{hd = t, rest = u} = Just (t, u)
 
 -- | Find all subterms of a term.
@@ -650,8 +657,8 @@ mapFun f = mapFunList f . singleton
 mapFunList :: (Fun f -> Fun g) -> TermList f -> Builder g
 mapFunList f ts = aux ts
   where
-    aux Empty = mempty
-    aux (Cons (Var x) ts) = var x `mappend` aux ts
+    aux Empty                 = mempty
+    aux (Cons (Var x) ts)     = var x `mappend` aux ts
     aux (Cons (App ff ts) us) = app (f ff) (aux ts) `mappend` aux us
 
 {-# INLINE replace #-}
@@ -662,7 +669,7 @@ replace t u (Cons v vs)
   | len v < len t = builder v `mappend` replace t u vs
   | otherwise =
     case v of
-      Var x -> var x `mappend` replace t u vs
+      Var x    -> var x `mappend` replace t u vs
       App f ts -> app f (replace t u ts) `mappend` replace t u vs
 
 -- | Replace the term at a given position in a term with a different term.
@@ -692,9 +699,9 @@ replacePositionSub sub n !x = aux n
       | n < len t = inside n t `mappend` outside u
       | otherwise = outside (singleton t) `mappend` aux (n-len t) u
 
-    inside 0 _ = outside x
+    inside 0 _          = outside x
     inside n (App f ts) = app f (aux (n-1) ts)
-    inside _ _ = undefined -- implies n >= len t
+    inside _ _          = undefined -- implies n >= len t
 
     outside t = substList sub t
 
@@ -714,7 +721,7 @@ positionToPath t n = term t n
 pathToPosition :: Term f -> [Int] -> Int
 pathToPosition t ns = term 0 t ns
   where
-    term k _ [] = k
+    term k _ []     = k
     term k t (n:ns) = list (k+1) (children t) n ns
 
     list _ Empty _ _ = error "bad path"

@@ -1,30 +1,37 @@
 -- Terms and substitutions, implemented using flatterms.
 -- This module contains all the low-level icky bits
 -- and provides primitives for building higher-level stuff.
-{-# LANGUAGE CPP, PatternSynonyms, ViewPatterns,
-    MagicHash, UnboxedTuples, BangPatterns,
-    RankNTypes, RecordWildCards, GeneralizedNewtypeDeriving,
-    OverloadedStrings, RoleAnnotations #-}
+{-# LANGUAGE BangPatterns               #-}
+{-# LANGUAGE CPP                        #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MagicHash                  #-}
+{-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE PatternSynonyms            #-}
+{-# LANGUAGE RankNTypes                 #-}
+{-# LANGUAGE RecordWildCards            #-}
+{-# LANGUAGE RoleAnnotations            #-}
+{-# LANGUAGE UnboxedTuples              #-}
+{-# LANGUAGE ViewPatterns               #-}
 {-# OPTIONS_GHC -O2 -fmax-worker-args=100 #-}
 #ifdef USE_LLVM
 {-# OPTIONS_GHC -fllvm #-}
 #endif
 module Twee.Term.Core where
 
-import Data.Primitive(sizeOf)
+import           Data.Primitive                   (sizeOf)
 #ifdef BOUNDS_CHECKS
-import Data.Primitive.ByteArray.Checked
+import           Data.Primitive.ByteArray.Checked
 #else
-import Data.Primitive.ByteArray
+import           Data.Primitive.ByteArray
 #endif
-import Control.Monad.ST.Strict
-import Data.Bits
-import Data.Int
-import GHC.Types(Int(..))
-import GHC.Prim
-import GHC.ST hiding (liftST)
-import Data.Ord
-import Twee.Profile
+import           Control.Monad.ST.Strict
+import           Data.Bits
+import           Data.Int
+import           Data.Ord
+import           GHC.Prim
+import           GHC.ST                           hiding (liftST)
+import           GHC.Types                        (Int (..))
+import           Twee.Profile
 
 --------------------------------------------------------------------------------
 -- Symbols. A symbol is a single function or variable in a flatterm.
@@ -327,7 +334,7 @@ emitSymbolBuilder x (Builder inner) =
 -- Emit a function application.
 {-# INLINE emitApp #-}
 emitApp :: Fun f -> Builder f -> Builder f
-emitApp (F n) inner = emitSymbolBuilder (Symbol True n 0) inner
+emitApp (F n) = emitSymbolBuilder (Symbol True n 0)
 
 -- Emit a variable.
 {-# INLINE emitVar #-}
@@ -391,7 +398,7 @@ isSubtermOfList t u =
 -- | Check if a variable occurs in a termlist.
 {-# INLINE occursList #-}
 occursList :: Var -> TermList f -> Bool
-occursList (V x) t = symbolOccursList (fromSymbol (Symbol False x 1)) t
+occursList (V x) = symbolOccursList (fromSymbol (Symbol False x 1))
 
 symbolOccursList :: Int64 -> TermList f -> Bool
 symbolOccursList !_ Empty = False

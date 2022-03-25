@@ -1,5 +1,9 @@
 -- | Equational proofs which are checked for correctedness.
-{-# LANGUAGE TypeFamilies, PatternGuards, RecordWildCards, ScopedTypeVariables, OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE PatternGuards       #-}
+{-# LANGUAGE RecordWildCards     #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies        #-}
 module Twee.Proof(
   -- * Constructing proofs
   Proof, Derivation(..), Axiom(..),
@@ -16,22 +20,22 @@ module Twee.Proof(
   ProvedGoal(..), provedGoal, checkProvedGoal,
   pPrintPresentation, present, describeEquation) where
 
-import Twee.Base hiding (invisible)
-import Twee.Equation
-import Twee.Utils
-import qualified Twee.Index as Index
-import Control.Monad
-import Data.Maybe
-import Data.List hiding (singleton)
-import Data.Ord
-import qualified Data.Set as Set
-import Data.Set(Set)
-import qualified Data.Map.Strict as Map
-import Data.Map(Map)
-import qualified Data.IntMap.Strict as IntMap
-import Control.Monad.Trans.State.Strict
-import Data.Graph
-import Twee.Profile
+import           Control.Monad
+import           Control.Monad.Trans.State.Strict
+import           Data.Graph
+import qualified Data.IntMap.Strict               as IntMap
+import           Data.List                        hiding (singleton)
+import           Data.Map                         (Map)
+import qualified Data.Map.Strict                  as Map
+import           Data.Maybe
+import           Data.Ord
+import           Data.Set                         (Set)
+import qualified Data.Set                         as Set
+import           Twee.Base                        hiding (invisible)
+import           Twee.Equation
+import qualified Twee.Index                       as Index
+import           Twee.Profile
+import           Twee.Utils
 
 ----------------------------------------------------------------------
 -- Equational proofs. Only valid proofs can be constructed.
@@ -74,9 +78,9 @@ data Axiom f =
     axiom_number :: {-# UNPACK #-} !Int,
     -- | A description of the axiom.
     -- Has no semantic meaning; for convenience only.
-    axiom_name :: !String,
+    axiom_name   :: !String,
     -- | The equation which the axiom asserts.
-    axiom_eqn :: !(Equation f) }
+    axiom_eqn    :: !(Equation f) }
   deriving (Eq, Ord, Show)
 
 -- | Checks a 'Derivation' and, if it is correct, returns a
@@ -90,7 +94,7 @@ certify :: Function f => Derivation f -> Proof f
 certify p =
   stamp "certify proof" $
   case check p of
-    Nothing -> error ("Invalid proof created!\n" ++ prettyShow p)
+    Nothing  -> error ("Invalid proof created!\n" ++ prettyShow p)
     Just eqn -> Proof eqn p
   where
     check (UseLemma proof sub) =
@@ -133,17 +137,17 @@ instance Symbolic (Derivation f) where
   type ConstantOf (Derivation f) = f
   termsDL (UseLemma _ sub) = termsDL sub
   termsDL (UseAxiom _ sub) = termsDL sub
-  termsDL (Refl t) = termsDL t
-  termsDL (Symm p) = termsDL p
-  termsDL (Trans p q) = termsDL p `mplus` termsDL q
-  termsDL (Cong _ ps) = termsDL ps
+  termsDL (Refl t)         = termsDL t
+  termsDL (Symm p)         = termsDL p
+  termsDL (Trans p q)      = termsDL p `mplus` termsDL q
+  termsDL (Cong _ ps)      = termsDL ps
 
   subst_ sub (UseLemma lemma s) = UseLemma lemma (subst_ sub s)
   subst_ sub (UseAxiom axiom s) = UseAxiom axiom (subst_ sub s)
-  subst_ sub (Refl t) = Refl (subst_ sub t)
-  subst_ sub (Symm p) = symm (subst_ sub p)
-  subst_ sub (Trans p q) = trans (subst_ sub p) (subst_ sub q)
-  subst_ sub (Cong f ps) = cong f (subst_ sub ps)
+  subst_ sub (Refl t)           = Refl (subst_ sub t)
+  subst_ sub (Symm p)           = symm (subst_ sub p)
+  subst_ sub (Trans p q)        = trans (subst_ sub p) (subst_ sub q)
+  subst_ sub (Cong f ps)        = cong f (subst_ sub ps)
 
 instance Function f => Pretty (Proof f) where
   pPrint = pPrintLemma defaultConfig (prettyShow . axiom_number) (prettyShow . equation)
@@ -214,7 +218,7 @@ unfoldLemmas lem (Cong f ps) = cong f (map (unfoldLemmas lem) ps)
 unfoldLemmas _ p = p
 
 lemma :: Proof f -> Subst f -> Derivation f
-lemma p sub = UseLemma p sub
+lemma = UseLemma
 
 simpleLemma :: Function f => Proof f -> Derivation f
 simpleLemma p =
@@ -230,11 +234,11 @@ autoSubst eqn =
   listToSubst [(x, build (var x)) | x <- vars eqn]
 
 symm :: Derivation f -> Derivation f
-symm (Refl t) = Refl t
-symm (Symm p) = p
+symm (Refl t)    = Refl t
+symm (Symm p)    = p
 symm (Trans p q) = trans (symm q) (symm p)
 symm (Cong f ps) = cong f (map symm ps)
-symm p = Symm p
+symm p           = Symm p
 
 trans :: Derivation f -> Derivation f -> Derivation f
 trans Refl{} p = p
@@ -248,12 +252,12 @@ trans p q = Trans p q
 
 cong :: Fun f -> [Derivation f] -> Derivation f
 cong f ps =
-  case sequence (map unRefl ps) of
+  case mapM unRefl ps of
     Nothing -> Cong f ps
     Just ts -> Refl (build (app f ts))
   where
     unRefl (Refl t) = Just t
-    unRefl _ = Nothing
+    unRefl _        = Nothing
 
 -- Transform a proof so that each step uses exactly one axiom
 -- or lemma. The proof will have the following form afterwards:
@@ -309,7 +313,7 @@ steps = steps1 . simplify
 -- back to a derivation.
 fromSteps :: Equation f -> [Derivation f] -> Derivation f
 fromSteps (t :=: _) [] = Refl t
-fromSteps _ ps = foldr1 Trans ps
+fromSteps _ ps         = foldr1 Trans ps
 
 -- | Find all lemmas which are used in a derivation.
 usedLemmas :: Derivation f -> [Proof f]
@@ -321,10 +325,10 @@ usedLemmasAndSubsts :: Derivation f -> [(Proof f, Subst f)]
 usedLemmasAndSubsts p = lem p []
   where
     lem (UseLemma p sub) = ((p, sub):)
-    lem (Symm p) = lem p
-    lem (Trans p q) = lem p . lem q
-    lem (Cong _ ps) = foldr (.) id (map lem ps)
-    lem _ = id
+    lem (Symm p)         = lem p
+    lem (Trans p q)      = lem p . lem q
+    lem (Cong _ ps)      = foldr ((.) . lem) id ps
+    lem _                = id
 
 -- | Find all axioms which are used in a derivation.
 usedAxioms :: Derivation f -> [Axiom f]
@@ -336,10 +340,10 @@ usedAxiomsAndSubsts :: Derivation f -> [(Axiom f, Subst f)]
 usedAxiomsAndSubsts p = ax p []
   where
     ax (UseAxiom axiom sub) = ((axiom, sub):)
-    ax (Symm p) = ax p
-    ax (Trans p q) = ax p . ax q
-    ax (Cong _ ps) = foldr (.) id (map ax ps)
-    ax _ = id
+    ax (Symm p)             = ax p
+    ax (Trans p q)          = ax p . ax q
+    ax (Cong _ ps)          = foldr ((.) . ax) id ps
+    ax _                    = id
 
 -- | Find all ground instances of axioms which are used in the
 -- expanded form of a derivation (no lemmas).
@@ -388,7 +392,7 @@ eliminateDefinitions axioms p = head (mapLemmas elim [p])
         vs = map V [0..length ps-1]
         qs = map (simpleLemma . certify . elim) ps -- avoid duplicating proofs of ts
 
-    elimSubst (Subst sub) = Subst (singleton <$> term <$> unsingleton <$> sub)
+    elimSubst (Subst sub) = Subst ((singleton . term) . unsingleton <$> sub)
       where
         unsingleton (Cons t Empty) = t
 
@@ -434,15 +438,15 @@ congPath _ _ _ = error "bad path"
 data Config f =
   Config {
     -- | Never inline lemmas.
-    cfg_all_lemmas :: !Bool,
+    cfg_all_lemmas          :: !Bool,
     -- | Inline all lemmas.
-    cfg_no_lemmas :: !Bool,
+    cfg_no_lemmas           :: !Bool,
     -- | Make the proof ground.
-    cfg_ground_proof :: !Bool,
+    cfg_ground_proof        :: !Bool,
     -- | Print out explicit substitutions.
-    cfg_show_instances :: !Bool,
+    cfg_show_instances      :: !Bool,
     -- | Print out proofs in colour.
-    cfg_use_colour :: !Bool,
+    cfg_use_colour          :: !Bool,
     -- | Print out which instances of some axioms were used.
     cfg_show_uses_of_axioms :: Axiom f -> Bool }
 
@@ -472,9 +476,9 @@ data Presentation f =
 -- The remaining fields are for information only.
 data ProvedGoal f =
   ProvedGoal {
-    pg_number  :: Int,
-    pg_name    :: String,
-    pg_proof   :: Proof f,
+    pg_number       :: Int,
+    pg_name         :: String,
+    pg_proof        :: Proof f,
 
     -- Extra fields for existentially-quantified goals, giving the original goal
     -- and the existential witness. These fields are not verified. If you want
@@ -564,7 +568,7 @@ simplifyProof config@Config{..} goals =
     key ds =
       (ds, [(equation p, derivation p) | p <- allLemmas ds])
 
-    pass `onlyIf` True = pass
+    pass `onlyIf` True  = pass
     _    `onlyIf` False = id
 
 simplificationPass ::
@@ -627,7 +631,7 @@ inlineUsedOnceLemmas ds =
         usedOnce p =
           case Map.lookup p uses of
             Just 1 -> True
-            _ -> False
+            _      -> False
 
 tightenProof :: Function f => [Derivation f] -> [Derivation f]
 tightenProof = mapLemmas tightenLemma
@@ -773,7 +777,7 @@ pPrintLemma Config{..} axiomNum lemmaNum p
           where
             [p] = filter (not . isRefl) ps
 
-    ppDir True = pPrintEmpty
+    ppDir True  = pPrintEmpty
     ppDir False = text "R->L"
 
     showSubst sub
@@ -782,7 +786,7 @@ pPrintLemma Config{..} axiomNum lemmaNum p
       | otherwise = pPrintEmpty
 
     isRefl Refl{} = True
-    isRefl _ = False
+    isRefl _      = False
 
 -- Pretty-print a substitution.
 pPrintSubst :: Function f => Subst f -> Doc
@@ -857,7 +861,7 @@ describeEquation ::
 describeEquation kind num mname eqn =
   text kind <+> text num <#>
   (case mname of
-     Nothing -> text ""
+     Nothing   -> text ""
      Just name -> text (" (" ++ name ++ ")")) <#>
   text ":" <+> pPrint eqn <#> text "."
 
@@ -924,9 +928,9 @@ maybeDecodeGoal ProvedGoal{..}
   where
     isFalseTerm, isTrueTerm :: Term f -> Bool
     isFalseTerm (App false _) = isFalse false
-    isFalseTerm _ = False
+    isFalseTerm _             = False
     isTrueTerm (App true _) = isTrue true
-    isTrueTerm _ = False
+    isTrueTerm _            = False
 
     t :=: u = equation pg_proof
     deriv = derivation pg_proof

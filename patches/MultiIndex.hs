@@ -1,16 +1,17 @@
-{-# LANGUAGE RecordWildCards, ScopedTypeVariables, FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 module Twee.MultiIndex(
   MultiIndex,
   empty, insert, delete, index,
   approxMatches, matches, lookup) where
 
-import Prelude hiding (lookup)
-import Twee.Base hiding (lookup, empty)
-import Twee.Rule
-import Twee.Index hiding (insert, delete, empty)
-import qualified Twee.Index as Index
+import           Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
-import Data.Map.Strict(Map)
+import           Prelude         hiding (lookup)
+import           Twee.Base       hiding (empty, lookup)
+import           Twee.Index      hiding (delete, empty, insert)
+import qualified Twee.Index      as Index
+import           Twee.Rule
 
 data MultiIndex idx f a =
   MultiIndex (idx -> a -> Bool) (Map idx (Index f a))

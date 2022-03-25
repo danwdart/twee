@@ -1,18 +1,20 @@
 -- | Miscellaneous utility functions.
 
-{-# LANGUAGE CPP, MagicHash, GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE CPP                        #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MagicHash                  #-}
 module Twee.Utils where
 
-import Control.Arrow((&&&))
-import Control.Exception
-import Data.List(groupBy, sortBy)
-import Data.Ord(comparing)
-import System.IO
-import GHC.Prim
-import GHC.Types
-import Data.Bits
-import System.Random
-import Data.Serialize
+import           Control.Arrow     ((&&&))
+import           Control.Exception
+import           Data.Bits
+import           Data.List         (groupBy, sortBy)
+import           Data.Ord          (comparing)
+import           Data.Serialize
+import           GHC.Prim
+import           GHC.Types
+import           System.IO
+import           System.Random
 --import Test.QuickCheck hiding ((.&.))
 
 repeatM :: Monad m => m a -> m [a]
@@ -106,7 +108,7 @@ splitInterval k (lo, hi) =
   [ (lo+i*blockSize, (lo+(i+1)*blockSize-1) `min` hi)
   | i <- [0..k-1] ]
   where
-    size = (hi-lo+1)
+    size = hi-lo+1
     blockSize = (size + k - 1) `div` k -- division rounding up
 {-
 prop_split_1 (Positive k) (lo, hi) =
@@ -139,7 +141,7 @@ reservoir k =
 
     ws = scanl1 (*) [ x ** (1 / fromIntegral k) | x <- xs ]
     is = zipWith gen ws ys
-    gen w y = floor (log y / log (1-w)) + 1
+    gen w y = floor (logBase (1-w) y) + 1
     prefix = [0..k-1]
 
 data Sample a = Sample Integer [(Integer, Int)] [a]
@@ -171,7 +173,7 @@ mapSample f (Sample total ps sample) =
 splits :: [a] -> [([a], [a])]
 splits [] = [([], [])]
 splits (x:xs) =
-  [([], x:xs)] ++
+  ([], x:xs) :
   [(x:ys, zs) | (ys, zs) <- splits xs]
 
 -- Fold over the natural numbers.

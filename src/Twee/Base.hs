@@ -1,7 +1,14 @@
 -- | Useful operations on terms and similar. Also re-exports some generally
 -- useful modules such as 'Twee.Term' and 'Twee.Pretty'.
 
-{-# LANGUAGE TypeFamilies, FlexibleInstances, UndecidableInstances, DeriveFunctor, DefaultSignatures, FlexibleContexts, TypeOperators, MultiParamTypeClasses, GeneralizedNewtypeDeriving, ConstraintKinds, RecordWildCards #-}
+{-# LANGUAGE ConstraintKinds            #-}
+{-# LANGUAGE FlexibleContexts           #-}
+{-# LANGUAGE FlexibleInstances          #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses      #-}
+{-# LANGUAGE TypeFamilies               #-}
+{-# LANGUAGE TypeOperators              #-}
+{-# LANGUAGE UndecidableInstances       #-}
 module Twee.Base(
   -- * Re-exported functionality
   module Twee.Term, module Twee.Pretty,
@@ -15,20 +22,20 @@ module Twee.Base(
   Minimal(..), minimalTerm, isMinimal, erase, eraseExcept, ground,
   Ordered(..), lessThan, orientTerms, EqualsBonus(..), Strictness(..), Function) where
 
-import Prelude hiding (lookup)
-import Control.Monad
-import qualified Data.DList as DList
-import Twee.Term hiding (subst, canonicalise)
-import qualified Twee.Term as Term
-import Twee.Utils
-import Twee.Pretty
-import Twee.Constraints hiding (funs)
-import Data.DList(DList)
-import Data.Int
-import Data.List hiding (singleton)
-import Data.Maybe
+import           Control.Monad
+import           Data.DList         (DList)
+import qualified Data.DList         as DList
+import           Data.Int
 import qualified Data.IntMap.Strict as IntMap
-import Data.Serialize
+import           Data.List          hiding (singleton)
+import           Data.Maybe
+import           Data.Serialize
+import           Prelude            hiding (lookup)
+import           Twee.Constraints   hiding (funs)
+import           Twee.Pretty
+import           Twee.Term          hiding (canonicalise, subst)
+import qualified Twee.Term          as Term
+import           Twee.Utils
 
 -- | Represents a unique identifier (e.g., for a rule).
 newtype Id = Id { unId :: Int32 }
@@ -53,7 +60,7 @@ class Symbolic a where
 
 -- | Apply a substitution.
 subst :: (Symbolic a, Substitution s, SubstFun s ~ ConstantOf a) => s -> a -> a
-subst sub x = subst_ (evalSubst sub) x
+subst sub = subst_ (evalSubst sub)
 
 -- | Find all terms occuring in the argument.
 terms :: Symbolic a => a -> [TermListOf a]
@@ -106,7 +113,7 @@ instance Symbolic a => Symbolic [a] where
 
 instance Symbolic a => Symbolic (Maybe a) where
   type ConstantOf (Maybe a) = ConstantOf a
-  termsDL Nothing = mzero
+  termsDL Nothing  = mzero
   termsDL (Just x) = termsDL x
   subst_ sub x = fmap (subst_ sub) x
 
@@ -186,7 +193,7 @@ renameManyAvoiding (t:ts) = u:us
   where
     u = renameAvoiding us t
     us = renameManyAvoiding ts
-  
+
 -- | Check if a term is the minimal constant.
 isMinimal :: Minimal f => Term f -> Bool
 isMinimal (App f Empty) | f == minimal = True

@@ -1,10 +1,10 @@
 {-# LANGUAGE ForeignFunctionInterface #-}
-import System.IO
-import Control.Concurrent.Async hiding (link)
-import System.Posix
-import System.Environment
+import           Control.Concurrent.Async hiding (link)
+import           Control.Monad
 import qualified SequentialMain
-import Control.Monad
+import           System.Environment
+import           System.IO
+import           System.Posix
 
 foreign import ccall "link_to_parent" link :: CPid -> IO ()
 
@@ -18,8 +18,7 @@ raceMany (x:xs) = do
 
 raceStdout :: [IO ()] -> IO ()
 raceStdout xs = do
-  action <- raceMany (map waitForStdout xs)
-  action
+  join (raceMany (map waitForStdout xs))
   where
     end = "*** END OF OUTPUT"
     waitForStdout p = do

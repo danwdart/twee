@@ -1,12 +1,12 @@
 module MaxCover where
 
-import SAT
-import SAT.Optimize
-import SAT.Unary hiding (modelValue)
-import qualified SAT.Unary as Unary
-import Data.List
+import           Control.Monad
+import           Data.List
 import qualified Data.Map.Strict as Map
-import Control.Monad
+import           SAT
+import           SAT.Optimize
+import           SAT.Unary       hiding (modelValue)
+import qualified SAT.Unary       as Unary
 
 usort :: Ord a => [a] -> [a]
 usort = map head . group . sort

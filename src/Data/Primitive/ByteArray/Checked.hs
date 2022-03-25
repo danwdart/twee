@@ -6,18 +6,22 @@ module Data.Primitive.ByteArray.Checked(
   module Data.Primitive.ByteArray,
   module Data.Primitive.ByteArray.Checked) where
 
-import Control.Monad.Primitive
+import           Control.Monad.Primitive
+import           Data.Primitive           (Prim)
+import           Data.Primitive.ByteArray (ByteArray (..),
+                                           MutableByteArray (..),
+                                           byteArrayContents,
+                                           mutableByteArrayContents,
+                                           newAlignedPinnedByteArray,
+                                           newByteArray, newPinnedByteArray,
+                                           sameMutableByteArray,
+                                           sizeofByteArray,
+                                           sizeofMutableByteArray,
+                                           unsafeFreezeByteArray,
+                                           unsafeThawByteArray)
 import qualified Data.Primitive.ByteArray as P
-import Data.Primitive(Prim)
-import Data.Primitive.ByteArray(
-  ByteArray(..), MutableByteArray(..),
-  newByteArray, newPinnedByteArray, newAlignedPinnedByteArray,
-  byteArrayContents, mutableByteArrayContents,
-  sameMutableByteArray,
-  unsafeFreezeByteArray, unsafeThawByteArray,
-  sizeofByteArray, sizeofMutableByteArray)
-import Data.Primitive.Checked
-import Data.Word
+import           Data.Primitive.Checked
+import           Data.Word
 
 instance Sized ByteArray where
   size = sizeofByteArray

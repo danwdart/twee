@@ -1,10 +1,10 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Data.MemoFun(MemoFun, memo, apply) where
 
-import Data.DynamicArray
-import Twee.Term
-import Data.IORef
-import System.IO.Unsafe
+import           Data.DynamicArray
+import           Data.IORef
+import           System.IO.Unsafe
+import           Twee.Term
 
 data MemoFun a b = MemoFun (IORef (Array (Maybe b))) (Fun a -> b)
 

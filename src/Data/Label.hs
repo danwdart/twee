@@ -1,19 +1,24 @@
 -- | Assignment of unique IDs to values.
 -- Inspired by the 'intern' package.
 
-{-# LANGUAGE CPP, RecordWildCards, ScopedTypeVariables, BangPatterns, MagicHash, RoleAnnotations #-}
+{-# LANGUAGE BangPatterns        #-}
+{-# LANGUAGE CPP                 #-}
+{-# LANGUAGE MagicHash           #-}
+{-# LANGUAGE RecordWildCards     #-}
+{-# LANGUAGE RoleAnnotations     #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 module Data.Label(Label, unsafeMkLabel, labelNum, label, find) where
 
-import Data.IORef
-import System.IO.Unsafe
-import qualified Data.Map.Strict as Map
-import Data.Map.Strict(Map)
+import           Data.DynamicArray (Array)
 import qualified Data.DynamicArray as DynamicArray
-import Data.DynamicArray(Array)
-import Data.Typeable
-import GHC.Exts
-import GHC.Int
-import Unsafe.Coerce
+import           Data.IORef
+import           Data.Map.Strict   (Map)
+import qualified Data.Map.Strict   as Map
+import           Data.Typeable
+import           GHC.Exts
+import           GHC.Int
+import           System.IO.Unsafe
+import           Unsafe.Coerce
 
 -- | A value of type @a@ which has been given a unique ID.
 newtype Label a =
@@ -87,7 +92,7 @@ label x =
       Just l -> return l
       Nothing -> do
         atomicModifyCaches $ \caches -> case tryFind caches of
-          Just l -> (caches, l)
+          Just l  -> (caches, l)
           Nothing -> insert caches
 
   where
@@ -131,6 +136,6 @@ findWorker n# =
     let n = I32# (intToInt32# n#)
 #else
     let n = I32# n#
-#endif      
+#endif
     Caches {..} <- readIORef cachesRef
     return $! fromAny (DynamicArray.getWithDefault undefined (fromIntegral n) caches_to)

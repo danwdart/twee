@@ -1,16 +1,17 @@
 -- | An implementation of Knuth-Bendix ordering.
 
-{-# LANGUAGE PatternGuards, BangPatterns #-}
+{-# LANGUAGE BangPatterns  #-}
+{-# LANGUAGE PatternGuards #-}
 module Twee.KBO(lessEq, lessIn, lessEqSkolem, Sized(..), Weighted(..)) where
 
-import Twee.Base hiding (lessEq, lessIn, lessEqSkolem)
-import Twee.Equation
-import Twee.Constraints hiding (lessEq, lessIn, lessEqSkolem)
-import qualified Data.Map.Strict as Map
-import Data.Map.Strict(Map)
-import Data.Maybe
-import Control.Monad
-import Twee.Utils
+import           Control.Monad
+import           Data.Map.Strict  (Map)
+import qualified Data.Map.Strict  as Map
+import           Data.Maybe
+import           Twee.Base        hiding (lessEq, lessEqSkolem, lessIn)
+import           Twee.Constraints hiding (lessEq, lessEqSkolem, lessIn)
+import           Twee.Equation
+import           Twee.Utils
 
 lessEqSkolem :: (Function f, Sized f, Weighted f) => Term f -> Term f -> Bool
 lessEqSkolem !t !u
@@ -78,8 +79,8 @@ lessEq t@(App f ts) u@(App g us) =
 lessIn :: (Function f, Sized f, Weighted f) => Model f -> Term f -> Term f -> Maybe Strictness
 lessIn model t u =
   case sizeLessIn model t u of
-    Nothing -> Nothing
-    Just Strict -> Just Strict
+    Nothing        -> Nothing
+    Just Strict    -> Just Strict
     Just Nonstrict -> lexLessIn model t u
 
 sizeLessIn :: (Function f, Sized f, Weighted f) => Model f -> Term f -> Term f -> Maybe Strictness

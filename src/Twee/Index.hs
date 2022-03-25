@@ -5,7 +5,13 @@
 -- the search term is an instance of the key, and return the corresponding
 -- values.
 
-{-# LANGUAGE BangPatterns, RecordWildCards, OverloadedStrings, FlexibleContexts, CPP, TupleSections, TypeFamilies #-}
+{-# LANGUAGE BangPatterns      #-}
+{-# LANGUAGE CPP               #-}
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards   #-}
+{-# LANGUAGE TupleSections     #-}
+{-# LANGUAGE TypeFamilies      #-}
 -- We get some bogus warnings because of pattern synonyms.
 {-# OPTIONS_GHC -fno-warn-overlapping-patterns #-}
 {-# OPTIONS_GHC -O2 -fmax-worker-args=100 #-}
@@ -27,17 +33,18 @@ module Twee.Index(
   fromListWith,
   invariant) where
 
-import Prelude hiding (null, lookup)
-import Twee.Base hiding (var, fun, empty, singleton, prefix, funs, lookupList, lookup, at)
-import qualified Twee.Term as Term
-import Data.DynamicArray hiding (singleton)
-import qualified Data.DynamicArray as Array
-import qualified Data.List as List
-import Data.Numbered(Numbered)
-import qualified Data.Numbered as Numbered
+import           Data.DynamicArray  hiding (singleton)
+import qualified Data.DynamicArray  as Array
 import qualified Data.IntMap.Strict as IntMap
-import qualified Twee.Term.Core as Core
-import Twee.Profile
+import qualified Data.List          as List
+import           Data.Numbered      (Numbered)
+import qualified Data.Numbered      as Numbered
+import           Prelude            hiding (lookup, null)
+import           Twee.Base          hiding (at, empty, fun, funs, lookup,
+                                     lookupList, prefix, singleton, var)
+import           Twee.Profile
+import qualified Twee.Term          as Term
+import qualified Twee.Term.Core     as Core
 
 -- The term index in this module is a _perfect discrimination tree_.
 -- This is a trie whose keys are terms, represented as flat lists of symbols
@@ -115,15 +122,15 @@ invariant Index{..} =
   noNilVars &&
   maxPrefix &&
   sizeCorrect &&
-  all invariant (map snd (toList fun)) &&
-  all invariant (map snd (Numbered.toList var))
+  all (invariant . snd) (toList fun) &&
+  all (invariant . snd) (Numbered.toList var)
   where
     nonEmpty = -- Index should not be empty
       not (List.null here) ||
-      not (List.null (filter (not . null . snd) (toList fun))) ||
+      (not . all (null . snd)) (toList fun) ||
       not (List.null (Numbered.toList var))
     noNilVars = -- the var field should not contain any Nils
-      all (not . null . snd) (Numbered.toList var)
+      (not . any (null . snd)) (Numbered.toList var)
     maxPrefix -- prefix should be used if possible
       | List.null here =
         length (filter (not . null . snd) (toList fun)) +
@@ -146,7 +153,7 @@ empty = Nil
 -- | Is the index empty?
 null :: Index f a -> Bool
 null Nil = True
-null _ = False
+null _   = False
 
 -- | An index with one entry.
 singleton :: Term f -> a -> Index f a
@@ -155,7 +162,7 @@ singleton !t x = leaf (Term.singleton t) [x]
 -- A leaf node, perhaps with a prefix.
 leaf :: TermList f -> [a] -> Index f a
 leaf !_ [] = Nil
-leaf t xs = Index (lenList t) t xs newArray Numbered.empty
+leaf t xs  = Index (lenList t) t xs newArray Numbered.empty
 
 -- Add a prefix (given as a list of symbols) to all terms in an index.
 addPrefix :: [Term f] -> Index f a -> Index f a
@@ -166,7 +173,7 @@ addPrefix ts idx =
     minSize_ = minSize_ idx + length ts,
     prefix = buildList (mconcat (map atom ts) `mappend` builder (prefix idx)) }
   where
-    atom (Var x) = Term.var x
+    atom (Var x)   = Term.var x
     atom (App f _) = con f
 
 -- Smart constructor for Index.
@@ -214,17 +221,17 @@ modify :: (Symbolic a, ConstantOf a ~ f) =>
   Term f -> a -> Index f a -> Index f a
 modify f !t0 !v0 !idx = aux [] (Term.singleton t) idx
   where
-    (!t, !v) = canonicalise (t0, v0) 
+    (!t, !v) = canonicalise (t0, v0)
 
     aux [] t Nil =
       leaf t (f v [])
 
     -- Non-empty prefix
-    aux syms (ConsSym{hd = t@(Var x), rest = ts})
+    aux syms ConsSym {hd = t@(Var x), rest = ts}
       idx@Index{prefix = ConsSym{hd = Var y, rest = us}}
       | x == y =
         aux (t:syms) ts idx{prefix = us, minSize_ = minSize_ idx-1}
-    aux syms (ConsSym{hd = t@(App f _), rest = ts})
+    aux syms ConsSym {hd = t@(App f _), rest = ts}
       idx@Index{prefix = ConsSym{hd = App g _, rest = us}}
       | f == g =
         aux (t:syms) ts idx{prefix = us, minSize_ = minSize_ idx-1}
@@ -273,7 +280,7 @@ expand idx@Index{minSize_ = size, prefix = ConsSym{hd = t, rest = ts}} =
 -- makes the search term exactly equal to the key.
 {-# INLINE lookup #-}
 lookup :: (Has a b, Symbolic b, Has b (TermOf b)) => TermOf b -> Index (ConstantOf b) a -> [b]
-lookup t idx = lookupList (Term.singleton t) idx
+lookup t = lookupList (Term.singleton t)
 
 {-# INLINEABLE lookupList #-}
 lookupList :: (Has a b, Symbolic b, Has b (TermOf b)) => TermListOf b -> Index (ConstantOf b) a -> [b]
@@ -286,7 +293,7 @@ lookupList t idx =
 -- which when applied to the value gives you the matching instance.
 {-# INLINE matches #-}
 matches :: Term f -> Index f a -> [(Subst f, a)]
-matches t idx = matchesList (Term.singleton t) idx
+matches t = matchesList (Term.singleton t)
 
 matchesList :: TermList f -> Index f a -> [(Subst f, a)]
 matchesList t idx =
@@ -297,16 +304,16 @@ elems :: Index f a -> [a]
 elems Nil = []
 elems idx =
   here idx ++
-  concatMap elems (map snd (toList (fun idx))) ++
-  concatMap elems (map snd (Numbered.toList (var idx)))
+  concatMap (elems . snd) (toList (fun idx)) ++
+  concatMap (elems . snd) (Numbered.toList (var idx))
 
 -- | Create an index from a list of items
 fromList :: (Symbolic a, ConstantOf a ~ f) => [(Term f, a)] -> Index f a
-fromList xs = foldr (uncurry insert) empty xs
+fromList = foldr (uncurry insert) empty
 
 -- | Create an index from a list of items
 fromListWith :: (Symbolic a, ConstantOf a ~ f) => (a -> Term f) -> [a] -> Index f a
-fromListWith f xs = foldr (\x -> insert (f x) x) empty xs
+fromListWith f = foldr (\ x -> insert (f x) x) empty
 
 ----------------------------------------------------------------------
 -- Substitutions used internally during lookup.
@@ -378,17 +385,17 @@ data Stack f a =
   -- A stack frame which is used when we have found a matching node.
   Yield {
     -- The list of values found at this node
-    yield_found  :: [a],
+    yield_found :: [a],
     -- The current substitution
-    yield_binds  :: {-# UNPACK #-} !(Bindings f),
+    yield_binds :: {-# UNPACK #-} !(Bindings f),
     -- The rest of the stack
-    yield_rest   :: !(Stack f a) }
+    yield_rest  :: !(Stack f a) }
   -- End of stack.
   | Stop
 
 -- Turn a stack into a list of results.
 run :: Stack f a -> [(Subst f, a)]
-run stack = stamp "index lookup" (run1 stack) 
+run stack = stamp "index lookup" (run1 stack)
   where
     run1 Stop = []
     run1 Frame{..} =
@@ -457,7 +464,7 @@ searchLoop binds t prefix here fun var rest =
           -- The search term matches this node.
           case here of
             [] -> rest
-            _ -> Yield here binds rest
+            _  -> Yield here binds rest
         _ ->
           -- We've run out of search term - it doesn't match this node.
           rest

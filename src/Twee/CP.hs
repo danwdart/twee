@@ -1,23 +1,30 @@
 -- | Critical pair generation.
-{-# LANGUAGE BangPatterns, FlexibleContexts, ScopedTypeVariables, MultiParamTypeClasses, RecordWildCards, OverloadedStrings, TypeFamilies, GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE BangPatterns               #-}
+{-# LANGUAGE FlexibleContexts           #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses      #-}
+{-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE RecordWildCards            #-}
+{-# LANGUAGE ScopedTypeVariables        #-}
+{-# LANGUAGE TypeFamilies               #-}
 module Twee.CP where
 
-import qualified Twee.Term as Term
-import Twee.Base
-import Twee.Rule
-import Twee.Index(Index)
-import qualified Data.Set as Set
-import Control.Monad
-import Data.List hiding (singleton)
+import           Control.Monad
+import           Data.Bits
+import           Data.ChurchList (ChurchList (..))
 import qualified Data.ChurchList as ChurchList
-import Data.ChurchList (ChurchList(..))
-import Twee.Utils
-import Twee.Equation
-import qualified Twee.Proof as Proof
-import Twee.Proof(Derivation, congPath)
-import Data.Bits
-import Data.Serialize
-import Data.Int
+import           Data.Int
+import           Data.List       hiding (singleton)
+import           Data.Serialize
+import qualified Data.Set        as Set
+import           Twee.Base
+import           Twee.Equation
+import           Twee.Index      (Index)
+import           Twee.Proof      (Derivation, congPath)
+import qualified Twee.Proof      as Proof
+import           Twee.Rule
+import qualified Twee.Term       as Term
+import           Twee.Utils
 
 -- | The set of positions at which a term can have critical overlaps.
 data Positions f = NilP | ConsP {-# UNPACK #-} !Int !(Positions f)
@@ -52,7 +59,7 @@ positionsChurch :: Positions f -> ChurchList Int
 positionsChurch posns =
   ChurchList $ \c n ->
     let
-      pos NilP = n
+      pos NilP            = n
       pos (ConsP x posns) = c x (pos posns)
     in
       pos posns
@@ -83,7 +90,7 @@ data How =
 data Direction = Forwards | Backwards deriving (Eq, Ord, Enum, Show)
 
 direct :: Rule f -> Direction -> Rule f
-direct rule Forwards = rule
+direct rule Forwards  = rule
 direct rule Backwards = backwards rule
 
 instance Serialize How where
@@ -157,7 +164,7 @@ overlapAt how@(How _ d1 d2) x1 x2 r1 r2 =
 
 {-# INLINE overlapAt' #-}
 overlapAt' :: How -> a -> a -> Equation f -> Equation f -> Maybe (Overlap a f)
-overlapAt' how@How{how_pos = n} r1 r2 (!outer :=: (!outer')) (!inner :=: (!inner')) = do
+overlapAt' how@How{how_pos = n} r1 r2 (outer :=: (!outer')) (inner :=: (!inner')) = do
   let t = at n (singleton outer)
   sub <- unifyTri inner t
   let
@@ -196,13 +203,13 @@ termSubst sub t = build (Term.subst sub t)
 -- | The configuration for the critical pair weighting heuristic.
 data Config =
   Config {
-    cfg_lhsweight :: !Int,
-    cfg_rhsweight :: !Int,
-    cfg_funweight :: !Int,
-    cfg_varweight :: !Int,
+    cfg_lhsweight   :: !Int,
+    cfg_rhsweight   :: !Int,
+    cfg_funweight   :: !Int,
+    cfg_varweight   :: !Int,
     cfg_depthweight :: !Int,
-    cfg_dupcost :: !Int,
-    cfg_dupfactor :: !Int }
+    cfg_dupcost     :: !Int,
+    cfg_dupfactor   :: !Int }
 
 -- | The default heuristic configuration.
 defaultConfig :: Config
@@ -322,7 +329,7 @@ split CriticalPair{cp_eqn = l :=: r, ..}
         cp_eqn   = l' :=: r',
         cp_top   = eraseExcept (vars l) $ eraseExcept (vars r) cp_top,
         cp_proof = eraseExcept (vars l) $ eraseExcept (vars r) cp_proof }
-    | ord == Nothing ] ++
+    | isNothing ord ] ++
 
     -- Weak rules l -> l' or r -> r'
     [ CriticalPair {

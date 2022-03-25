@@ -2,7 +2,7 @@
 
 module Data.Primitive.Checked where
 
-import Data.Primitive(Prim, sizeOf)
+import           Data.Primitive (Prim, sizeOf)
 
 -- | A type class of things which have a size (e.g., arrays).
 class Sized a where
@@ -25,22 +25,20 @@ range arr n len x
   | len == 0 = x
   | otherwise =
     check arr n $
-    check arr (n+len-1) $ x
+    check arr (n+len-1) x
 
 -- | Check that a single access is in bounds.
 -- The index accessed is computed by multiplying by the size
 -- of the first argument.
 {-# INLINE checkPrim #-}
 checkPrim :: (Sized a, Prim b) => b -> a -> Int -> c -> c
-checkPrim x arr n res =
-  range arr (n*sizeOf x) (sizeOf x) res
-  
+checkPrim x arr n = range arr (n * sizeOf x) (sizeOf x)
+
 -- | Check that a range of accesses is in bounds.
 -- The range is inclusive.
 -- The index accessed is computed by multiplying by the size
 -- of the first argument.
 {-# INLINE rangePrim #-}
 rangePrim :: (Sized a, Prim b) => b -> a -> Int -> Int -> c -> c
-rangePrim x arr n len res =
-  range arr (n*sizeOf x) (len*sizeOf x) res
-  
+rangePrim x arr n len = range arr (n * sizeOf x) (len * sizeOf x)
+

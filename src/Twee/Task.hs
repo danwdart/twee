@@ -2,24 +2,24 @@
 {-# LANGUAGE RecordWildCards #-}
 module Twee.Task(Task, newTask, checkTask) where
 
-import System.CPUTime
-import Data.IORef
-import Control.Monad.IO.Class
+import           Control.Monad.IO.Class
+import           Data.IORef
+import           System.CPUTime
 
 data TaskData m a =
   TaskData {
     -- When was the task created?
-    task_start :: !Integer,
+    task_start     :: !Integer,
     -- When was the task last run?
-    task_last :: !Integer,
+    task_last      :: !Integer,
     -- How long have we spent on this task so far?
-    task_spent :: !Integer,
+    task_spent     :: !Integer,
     -- How often should we run this task at most, in seconds?
     task_frequency :: !Double,
     -- What proportion of our time should we spend on the task?
-    task_budget :: !Double,
+    task_budget    :: !Double,
     -- The task itself
-    task_what :: m a }
+    task_what      :: m a }
 
 -- | A task which runs in the monad @m@ and produces a value of type @a@.
 newtype Task m a = Task (IORef (TaskData m a))
